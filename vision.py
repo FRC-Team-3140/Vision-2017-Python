@@ -1,6 +1,13 @@
 import cv2
 import numpy as np
 import time
+import argparse
+
+parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
+parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
+args=parser.parse_args()
+
+from pdb import set_trace as br
 
 # Camera 0 is the High target camera
 # Camera 1 is the Low target camera
@@ -108,19 +115,20 @@ while(camera.isOpened()):
 						# does it have the right orientation? 
 						centerX, centerY = rect[0]
 						width, height = rect[1]
-#						angle = rect[2]
-#						if (angle < -45.0): 
-#							angle += 90.
+						if height > width: 
+							h = width
+							width = height
+							height = h
 						if (height > 0):
 							targetWidth, targetHeight = targetRects[0]
 							targetAspectRatio = targetWidth/targetHeight
 							rectAspectRatio = width/height
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
-
+#							print "rectAspect:", rectAspectRatio
+#							print "targetAspect:", targetAspectRatio
+#							print "errorAspect:", errorAspect
 							if (abs(errorAspect) <= aspectRatioTol):
-#								print "rectAspect:", rectAspectRatio
-#								print "targetAspect:", targetAspectRatio
-#								print "errorAspect:", errorAspect								
+								
 #								print centerX, centerY
 #								print width, height
 #								print angle
