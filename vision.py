@@ -1,13 +1,20 @@
+#!C:\Program Files\Anaconda2\python.exe
+
 import cv2
 import numpy as np
 import time
 import argparse
+import socket
+
+from pdb import set_trace as br
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
-from pdb import set_trace as br
+UDP_IP = "127.0.0.1"
+
+
 
 # Camera 0 is the High target camera
 # Camera 1 is the Low target camera
@@ -157,8 +164,10 @@ while(camera.isOpened()):
 #				print cv2.contourArea(box)/cv2.contourArea(cnt)
 #			cv2.drawContours(frame, [cnt], 0, (0,255,0), 3)
 
-		cv2.imshow('Result',frame)
+		if args.debug==True:
+			cv2.imshow('Result',frame)
 		if cv2.waitKey(1) & 0xFF == ord('q'):
+			print "Image size:", frame.size
 			break
 			
 		seconds = time.time() - start
