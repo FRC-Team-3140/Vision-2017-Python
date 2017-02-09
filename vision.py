@@ -19,8 +19,8 @@ UDP_IP = "127.0.0.1"
 # Camera 0 is the High target camera
 # Camera 1 is the Low target camera
 
-cameraHigh = cv2.VideoCapture(0)
-cameraLow = cv2.VideoCapture(1)
+cameraHigh = cv2.VideoCapture(1)
+cameraLow = cv2.VideoCapture(0)
   
 # Now we can initialize the camera capture object with the cv2.VideoCapture class.
 # All it needs is the index to a camera port.
