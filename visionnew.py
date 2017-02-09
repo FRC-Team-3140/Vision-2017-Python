@@ -24,9 +24,9 @@ def initCamera(id = 0):
 	#camera.set(cv2.CV_CAP_PROP_FRAME_WIDTH, 640)
 	#camera.set(cv2.CV_CAP_PROP_FRAME_HEIGHT, 480)
 
-	camera.set(3, 640)
-	camera.set(4, 480)
-
+	camera.set(3, 640) # set height
+	camera.set(4, 480) # set width
+	camera.set(15,-10.0) # set exposure to minimum
 	return camera
 
 
