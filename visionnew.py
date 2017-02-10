@@ -24,15 +24,15 @@ def initCamera(id = 0):
 	#camera.set(cv2.CV_CAP_PROP_FRAME_WIDTH, 640)
 	#camera.set(cv2.CV_CAP_PROP_FRAME_HEIGHT, 480)
 
-	camera.set(3, 640) # set height
-	camera.set(4, 480) # set width
-	camera.set(15,-10.0) # set exposure to minimum
+	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
+	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
+	camera.set(cv2.CAP_PROP_BRIGHTNESS, 50) 
+	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
+	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 	return camera
 
-
-cameraLow = initCamera(0)
 cameraHigh = initCamera(1)
-	
+cameraLow = initCamera(0)	
 
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
@@ -68,13 +68,13 @@ targetSought = 0 # High target camera = 0, Low target camera = 1
 def selectTarget (targetSought = 0) :
 	if targetSought == 0:
 		camera = cameraHigh
-		target = targetLow
+		target = targetHigh
 	else :
 		camera = cameraLow
-		target = targetHigh
+		target = targetLow
 	return (camera,target)
 
-camera, target = selectTarget(1)
+camera, target = selectTarget(0)
 
 aspectRatioTol = .1
 areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
