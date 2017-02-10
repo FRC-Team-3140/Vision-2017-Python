@@ -44,7 +44,8 @@ def initUdp(udp_ip,udp_port):
 	return UDP_SOCK
 def udpSend(message,sock):
 	sock.sendto(message, (UDP_IP, UDP_PORT))
-	print('Sent:'+message)
+	if args.debug:
+		print('Sent:'+message)
 
 send_sock=initUdp('192.168.0.1',12)
 def initCamera(id = 0):
@@ -145,7 +146,8 @@ def processFrame():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
-								if args.debug==True: cv2.drawContours(frame,[box], 0, 255, 3)
+								if args.debug==True: 
+									cv2.drawContours(frame,[box], 0, 255, 3)
 							# Second box								
 							targetWidth, targetHeight = target['Rects'][1]
 							targetAspectRatio = targetWidth/targetHeight
@@ -153,7 +155,12 @@ def processFrame():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
-								if args.debug==True: cv2.drawContours(frame,[box], 0, (0,0,255), 3)
+								if args.debug==True: 
+									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
+							
+	if len(boxes)==2:
+		print('Send stuff!')
+		# udpSend(runtime+','+str()+','+str()+',Last',send_sock)
 	return frame
 
 while(camera.isOpened()):
@@ -170,7 +177,6 @@ while(camera.isOpened()):
 	print("FPS: {0}".format(1/seconds))
 	runtime=str(time.time()-start_time)
 	udpSend(runtime+',12,34,Last',send_sock)
-
 
 
 # Release everything if job is finished
