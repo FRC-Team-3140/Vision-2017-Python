@@ -159,10 +159,6 @@ def processFrame():
 								boxes.append(box) #collect the boxes for later processing
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
-							
-	if len(boxes)==2:
-		print('Send stuff!')
-		# udpSend(runtime+','+str()+','+str()+',Last',send_sock)
 	return frame
 
 while(camera.isOpened()):
