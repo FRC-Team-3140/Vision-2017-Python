@@ -47,7 +47,8 @@ def udpSend(message,sock):
 	if args.debug:
 		print('Sent:'+message)
 
-send_sock=initUdp('192.168.0.1',12)
+send_sock=initUdp('192.168.0.1',12) # initializes UDP socket to send on
+
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
 	
@@ -59,18 +60,14 @@ def initCamera(id = 0):
 
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
-	camera.set(cv2.CAP_PROP_BRIGHTNESS, 50) 
+	camera.set(cv2.CAP_PROP_BRIGHTNESS, 150) 
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 	return camera
 
-cameraHigh = initCamera(1)
-<<<<<<< HEAD
-cameraLow = initCamera(0)	
+cameraHigh = initCamera(0)
+cameraLow = initCamera(1)	
 
-=======
-	
->>>>>>> 3b97e90206d98c5e1acbf79d41a65e096959b982
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
 # each other and the background
@@ -122,7 +119,7 @@ def processFrame():
 	ret, frame = camera.read()
 	if ret==True:
 		img2 = frame[:,:,1]  #green band
-		ret,thresh = cv2.threshold(img2,200,255,0)
+		ret,thresh = cv2.threshold(img2,100,255,0)
 		im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		boxes = []	#list of best fit boxes to contours
 		boxCenters = [[]]  #centers of boxes
