@@ -1,20 +1,53 @@
 #!C:\Program Files\Anaconda2\python.exe
-
+from __future__ import print_function
 import cv2
 import numpy as np
 import time
 import argparse
 import socket
-
+import re #used to check ip regex
+import sys #
 from pdb import set_trace as br
+
+start_time=time.time() #for diagnostics
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
-UDP_IP = "127.0.0.1"
+#define an error printing function for error reporting to terminal STD error IO stream
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
+def initUdp(udp_ip,udp_port):
+	global UDP_IP
+	global UDP_PORT
+	#set ip address
+	try:
+		assert type(udp_ip)==str
+		if not re.match('\\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\\b',udp_ip):
+			raise 'n cookie'
+		UDP_IP = udp_ip
+	except:
+		eprint('Error: Provided udp_ip is not a valid ip')
+		sys.exit()
+	#set port
+	try:
+		assert type(udp_port)==int and udp_port in xrange(1,49151) #xrange is more memory efficient than range for large ranges
+		UDP_PORT = udp_port
+	except:
+		eprint('Error: Provided port is invalid')
+		sys.exit()
+	#define socket
+	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
+							 socket.SOCK_DGRAM) # UDP
+	return UDP_SOCK
+def udpSend(message,sock):
+	sock.sendto(message, (UDP_IP, UDP_PORT))
+	if args.debug:
+		print('Sent:'+message)
 
+send_sock=initUdp('192.168.0.1',12)
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
 	
@@ -32,8 +65,12 @@ def initCamera(id = 0):
 	return camera
 
 cameraHigh = initCamera(1)
+<<<<<<< HEAD
 cameraLow = initCamera(0)	
 
+=======
+	
+>>>>>>> 3b97e90206d98c5e1acbf79d41a65e096959b982
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
 # each other and the background
@@ -114,7 +151,8 @@ def processFrame():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
-								if args.debug==True: cv2.drawContours(frame,[box], 0, 255, 3)
+								if args.debug==True: 
+									cv2.drawContours(frame,[box], 0, 255, 3)
 							# Second box								
 							targetWidth, targetHeight = target['Rects'][1]
 							targetAspectRatio = targetWidth/targetHeight
@@ -122,7 +160,12 @@ def processFrame():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
-								if args.debug==True: cv2.drawContours(frame,[box], 0, (0,0,255), 3)
+								if args.debug==True: 
+									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
+							
+	if len(boxes)==2:
+		print('Send stuff!')
+		# udpSend(runtime+','+str()+','+str()+',Last',send_sock)
 	return frame
 
 while(camera.isOpened()):
@@ -136,9 +179,9 @@ while(camera.isOpened()):
 		break
 		
 	seconds = time.time() - start
-	print "FPS: {0}".format(1/seconds)
-	
-
+	print("FPS: {0}".format(1/seconds))
+	runtime=str(time.time()-start_time)
+	udpSend(runtime+',12,34,Last',send_sock)
 
 
 # Release everything if job is finished
