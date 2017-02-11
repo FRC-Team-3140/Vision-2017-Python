@@ -9,26 +9,11 @@ import re #used to check ip regex
 import sys #
 from pdb import set_trace as br
 
-start_time=time.time() #for diagnostics
-runtime = start_time
-fpsMin = 10000000
-fpsMax = -1
-fpsCount = 0
-fpsSum = 0
-
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
+parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
-
-############## Parameters ###############################################################
-filename = args.file
-font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .1
-areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 100 # minimum box size to consider	if ret==True:
-targetSought = 0 # High target camera = 0, Low target camera = 1
-#########################################################################################
 
 #define an error printing function for error reporting to terminal STD error IO stream
 def eprint(*args, **kwargs):
@@ -73,12 +58,29 @@ def initCamera(id = 0):
 	#camera.set(cv2.CV_CAP_PROP_FRAME_WIDTH, 640)
 	#camera.set(cv2.CV_CAP_PROP_FRAME_HEIGHT, 480)
 
-	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
-	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
-	camera.set(cv2.CAP_PROP_BRIGHTNESS, 150) 
+#	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
+#	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
+	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) 
+	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) 
+	camera.set(cv2.CAP_PROP_BRIGHTNESS, 220) 
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 	return camera
+
+############## Parameter Initialization ##################################################
+filename = args.file
+font = cv2.FONT_HERSHEY_SIMPLEX
+aspectRatioTol = .4
+areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
+minBoxArea = 100 # minimum box size to consider	if ret==True:
+targetSought = 0 # High target camera = 0, Low target camera = 1 
+start_time=time.time() #for diagnostics
+runtime = start_time
+fpsMin = 10000000
+fpsMax = -1
+fpsCount = 0
+fpsSum = 0
+#########################################################################################
 
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
@@ -92,7 +94,7 @@ def initCamera(id = 0):
 
 targetHigh = {
 	'NumRects' : 2,
-	'Rects' : [[16.0,4.0],[16.0,2.0]], #inches width x height for both rectangles
+	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
 	'RectSep' : [0.0,5.0], #inches width, height in separation between rectanglestargetHighRectSep,
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
@@ -118,11 +120,10 @@ def selectTarget (targetSought = 0) :
 		target = targetLow
 	return (camera,target)
 
-if file:
+if args.file:
 	camera = cv2.VideoCapture(filename)
 	cameraHigh = camera	# cameras are not used when reading from a saved test video
 	cameraLow = camera	# cameras are not used when reading from a saved test video
-
 else:
 	cameraHigh = initCamera(0)
 	cameraLow = initCamera(1)
@@ -168,7 +169,7 @@ def processFrame():
 								boxes.append(box) #collect the boxes for later processing
 								boxCenters.append([centerX,centerY])
 								if args.debug==True: 
-									cv2.drawContours(frame,[box], 0, 255, 3)
+									cv2.drawContours(frame,[box], 0, 255, 2)
 							# Second box								
 							targetWidth, targetHeight = target['Rects'][1]
 							targetAspectRatio = targetWidth/targetHeight
@@ -177,12 +178,12 @@ def processFrame():
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
 								if args.debug==True: 
-									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
-	return ret, frame, boxCenters
+									cv2.drawContours(frame,[box], 0, (0,0,255), 2)
+	return ret, thresh, frame, boxCenters
 
 while(camera.isOpened()):
 	runtimeLast = runtime
-	ret, frame, boxCenters = processFrame()
+	ret, thresh, frame, boxCenters = processFrame()
 
 	if ret:		
 		runtime=time.time()-start_time
@@ -199,8 +200,11 @@ while(camera.isOpened()):
 			cv2.putText(frame,'FPS: '+str(fps),(10,30),font,0.5,(255,255,255),1)
 			cv2.putText(frame,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
 			cv2.putText(frame,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
-			cv2.putText(frame,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)			
-			cv2.imshow('Result',frame)
+			cv2.putText(frame,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)	
+			if args.thresh:
+				cv2.imshow('Thresholded Image',thresh)		
+			else:
+				cv2.imshow('Result',frame)
 
 		if (cv2.waitKey(1) & 0xFF == ord('q')):
 			break
