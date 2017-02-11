@@ -148,7 +148,8 @@ def processFrame():
 			box = np.int0(box)
 			# is it a big enough box?
 
-			segments = [[]]
+			segments1 = [[]]
+			segments2 = [[]]
 			if cv2.contourArea(box) >= minBoxArea:
 				if (cv2.contourArea(cnt) != 0): 
 					# does it look like a rectangle?
@@ -167,8 +168,7 @@ def processFrame():
 							rectAspectRatio = width/height
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
-								boxes.append(box) #collect the boxes for later processing
-								boxCenters.append([centerX,centerY])
+								segments1.append(rect) #collect the boxes for later processing
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, 255, 2)
 							# Second box								
@@ -177,9 +177,39 @@ def processFrame():
 							rectAspectRatio = width/height
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
-								boxes.append(box) #collect the boxes for later processing
+								segments2.append(rect) #collect the boxes for later processing
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 2)
+
+	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
+		found = False
+		# let's see if the ratios we found are consistent between all the segments
+		# at a given range, all target segment ratios should match all segment ratios relative to each other
+		target1Width, target1Height = target['Rects'][0]
+		target2Width, target2Height = target['Rects'][1]
+		targetWidthRatio = target1Width / target2Width			
+		targetHeightRatio = target1Height / target2Height
+		for rect1 in segments1:
+			width1, height1 = segments1[1]
+			for rect2 in segments2:	
+				width2, height2 = segments2[1]
+				heightRatio = height1 / height2
+				heightErrorAspect = (heightRatio / targetHeightRatio) / targetHeightRatio
+				if (abs(heightErrorAspect) <= aspectRatioTol):
+					widthRatio = width1 / width2
+					widthErrorAspect = (widthRatio / targetWidthRatio) / targetWidthRatio
+					if (abs(widthErrorAspect) <- aspectRatioTol):
+						# each segment appears the right size relative to each other, how about the expected 
+						# separation relative to each other?  Does that match as well on the segments?
+						targetSepX, targetSepY = target['RectSep']
+						center1X, center1Y = segments1[0]
+						center2X, center2Y = segments2[0]
+						segmentSepX = center2X - center1X		# row, col coordinate system with top left the origin
+						segmentSepY = cetner2Y - cetner2Y
+
+
+
+
 	return ret, thresh, frame, boxCenters
 
 while(camera.isOpened()):
