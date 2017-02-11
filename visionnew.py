@@ -170,17 +170,21 @@ def processFrame():
 								boxes.append(box) #collect the boxes for later processing
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
-	return frame
+	return ret, frame
 
 while(camera.isOpened()):
 	start = time.time()
-	frame = processFrame()
+	ret, frame = processFrame()
 
-	if args.debug==True:
-		cv2.imshow('Result',frame)
+	if ret:		
+		if (args.debug and ret):
+			cv2.imshow('Result',frame)
 
-	if cv2.waitKey(1) & 0xFF == ord('q'):
-		break
+		if (cv2.waitKey(1) & 0xFF == ord('q')):
+			break
+	else: break
+
+
 		
 	seconds = time.time() - start
 	print("FPS: {0}".format(1/seconds))
