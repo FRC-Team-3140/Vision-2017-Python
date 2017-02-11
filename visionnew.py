@@ -10,6 +10,11 @@ import sys #
 from pdb import set_trace as br
 
 start_time=time.time() #for diagnostics
+runtime = start_time
+fpsMin = 10000000
+fpsMax = -1
+fpsCount = 0
+fpsSum = 0
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
@@ -176,16 +181,25 @@ def processFrame():
 	return ret, frame, boxCenters
 
 while(camera.isOpened()):
-	start = time.time()
-
+	runtimeLast = runtime
 	ret, frame, boxCenters = processFrame()
 
 	if ret:		
-		seconds = time.time() - start
-		print("FPS: {0}".format(1/seconds))
-		runtime=str(time.time()-start_time)
-		udpSend(runtime+',12,34,Last',send_sock)
-		if (args.debug and ret):
+		runtime=time.time()-start_time
+
+		udpSend(str(runtime)+',12,34,Last',send_sock)
+		if (args.debug):
+			fps = 1.0/(runtime - runtimeLast)
+			fps = np.int0(fps)
+			fpsCount = fpsCount + 1
+			fpsSum = fpsSum + fps
+			fpsAvg = fpsSum / fpsCount
+			if (fpsCount > 1) and (fps < fpsMin): fpsMin = fps  #discard first time through
+			if fps > fpsMax: fpsMax = fps
+			cv2.putText(frame,'FPS: '+str(fps),(10,30),font,0.5,(255,255,255),1)
+			cv2.putText(frame,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
+			cv2.putText(frame,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
+			cv2.putText(frame,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)			
 			cv2.imshow('Result',frame)
 
 		if (cv2.waitKey(1) & 0xFF == ord('q')):
