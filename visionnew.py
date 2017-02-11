@@ -135,6 +135,7 @@ def processFrame():
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
 	ret, frame = camera.read()
+	thresh = 0
 
 	if ret==True:
 		img2 = frame[:,:,1]  #green band
