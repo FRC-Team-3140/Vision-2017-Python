@@ -16,7 +16,14 @@ parser.add_argument('--file', type=str, action='store', default=0, help='Video F
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
+############## Parameters ###############################################################
 filename = args.file
+font = cv2.FONT_HERSHEY_SIMPLEX
+aspectRatioTol = .1
+areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
+minBoxArea = 100 # minimum box size to consider	if ret==True:
+targetSought = 0 # High target camera = 0, Low target camera = 1
+#########################################################################################
 
 #define an error printing function for error reporting to terminal STD error IO stream
 def eprint(*args, **kwargs):
@@ -97,8 +104,6 @@ targetHigh = {
 targetLow = dict(targetHigh)
 targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
 
-targetSought = 0 # High target camera = 0, Low target camera = 1
-
 def selectTarget (targetSought = 0) :
 	if targetSought == 0:
 		camera = cameraHigh
@@ -119,10 +124,6 @@ else:
 
 camera, target = selectTarget(0)
 
-aspectRatioTol = .1
-areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 100 # minimum box size to consider	if ret==True:
-
 def processFrame():
 
 
@@ -140,6 +141,7 @@ def processFrame():
 			box = np.int0(box)
 			# is it a big enough box?
 
+			segments = [[]]
 			if cv2.contourArea(box) >= minBoxArea:
 				if (cv2.contourArea(cnt) != 0): 
 					# does it look like a rectangle?
@@ -147,7 +149,7 @@ def processFrame():
 						# does it have the right orientation? 
 						centerX, centerY = rect[0]
 						width, height = rect[1]
-						if height > width: 
+						if height > width: 	# make insensitive to 90 deg rotations due to minAreaRect results
 							h = width
 							width = height
 							height = h
@@ -159,6 +161,7 @@ def processFrame():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								boxes.append(box) #collect the boxes for later processing
+								boxCenters.append([centerX,centerY])
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, 255, 3)
 							# Second box								
@@ -170,13 +173,18 @@ def processFrame():
 								boxes.append(box) #collect the boxes for later processing
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 3)
-	return ret, frame
+	return ret, frame, boxCenters
 
 while(camera.isOpened()):
 	start = time.time()
-	ret, frame = processFrame()
+
+	ret, frame, boxCenters = processFrame()
 
 	if ret:		
+		seconds = time.time() - start
+		print("FPS: {0}".format(1/seconds))
+		runtime=str(time.time()-start_time)
+		udpSend(runtime+',12,34,Last',send_sock)
 		if (args.debug and ret):
 			cv2.imshow('Result',frame)
 
@@ -186,10 +194,6 @@ while(camera.isOpened()):
 
 
 		
-	seconds = time.time() - start
-	print("FPS: {0}".format(1/seconds))
-	runtime=str(time.time()-start_time)
-	udpSend(runtime+',12,34,Last',send_sock)
 
 
 # Release everything if job is finished
