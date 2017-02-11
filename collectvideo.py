@@ -20,7 +20,7 @@ import argparse
 from pdb import set_trace as br
 
 parser = argparse.ArgumentParser(description="Captures Video from Bot Cameras")
-parser.add_argument('id', type=int, default=0, help='Select Camera id 0 or 1')
+parser.add_argument('--id', type=int, action='store', default=0, help='Select Camera id 0 or 1')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 id = args.id

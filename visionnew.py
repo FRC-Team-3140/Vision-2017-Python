@@ -12,8 +12,11 @@ from pdb import set_trace as br
 start_time=time.time() #for diagnostics
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
+parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
+
+filename = args.file
 
 #define an error printing function for error reporting to terminal STD error IO stream
 def eprint(*args, **kwargs):
@@ -65,9 +68,6 @@ def initCamera(id = 0):
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 	return camera
 
-cameraHigh = initCamera(0)
-cameraLow = initCamera(1)	
-
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
 # each other and the background
@@ -108,6 +108,15 @@ def selectTarget (targetSought = 0) :
 		target = targetLow
 	return (camera,target)
 
+if file:
+	camera = cv2.VideoCapture(filename)
+	cameraHigh = camera	# cameras are not used when reading from a saved test video
+	cameraLow = camera	# cameras are not used when reading from a saved test video
+
+else:
+	cameraHigh = initCamera(0)
+	cameraLow = initCamera(1)
+
 camera, target = selectTarget(0)
 
 aspectRatioTol = .1
@@ -116,7 +125,9 @@ minBoxArea = 100 # minimum box size to consider	if ret==True:
 
 def processFrame():
 
+
 	ret, frame = camera.read()
+
 	if ret==True:
 		img2 = frame[:,:,1]  #green band
 		ret,thresh = cv2.threshold(img2,100,255,0)
