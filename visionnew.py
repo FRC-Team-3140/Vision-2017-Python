@@ -131,15 +131,15 @@ camera, target = selectTarget(0)
 
 def processFrame():
 
-
+	boxes = []	#list of best fit boxes to contours
+	boxCenters = [[]]  #centers of boxes
 	ret, frame = camera.read()
 
 	if ret==True:
 		img2 = frame[:,:,1]  #green band
 		ret,thresh = cv2.threshold(img2,100,255,0)
 		im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-		boxes = []	#list of best fit boxes to contours
-		boxCenters = [[]]  #centers of boxes
+
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
 			box = cv2.boxPoints(rect) #best fit box (rotated) to the shape
