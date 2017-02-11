@@ -50,7 +50,7 @@ def udpSend(message,sock):
 	if args.debug:
 		print('Sent:'+message)
 
-send_sock=initUdp('169.254.74.128',5803) # initializes UDP socket to send on
+send_sock=initUdp('10.31.40.70',5800) # initializes UDP socket to send on
 
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
