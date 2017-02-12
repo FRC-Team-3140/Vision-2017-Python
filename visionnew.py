@@ -141,15 +141,42 @@ def processFrame():
 		img2 = frame[:,:,1]  #green band
 		ret,thresh = cv2.threshold(img2,100,255,0)
 		im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		segments1 = []		# found segment array for rectangle 1
+		segments2 = []		# found segment array for rectangle 2
 
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
 			box = cv2.boxPoints(rect) #best fit box (rotated) to the shape
+
+			centerX, centerY = rect[0]
+
+			for i in range(0,3):
+				if i == 0:
+					topLeft = box[0]
+					botLeft = box[0]
+					topRight = box[0]
+					botRight = box[0]
+				else:
+					if (box[i][0] < centerX) and (box[i][1] < centerY): topLeft = box[i]
+					if (box[i][0] > centerX) and (box[i][1] < centerY): botLeft = box[i]
+					if (box[i][0] < centerX) and (box[i][1] > centerY): topRight = box[i]
+					if (box[i][0] > centerX) and (box[i][1] > centerY): botRight = box[i]
+
+			edgeTop = [(topLeft[0]+topRight[0])/2, (topLeft[1]+topRight[1])/2]
+			edgeBot = [(botLeft[0]+botRight[0])/2, (botLeft[1]+botRight[1])/2]
+			edgeLeft = [(topLeft[0]+botLeft[0])/2, (topLeft[1]+botLeft[1])/2]
+			edgeRight = [(topRight[0]+botRight[0])/2, (topRight[1]+botRight[1])/2]
+
+			width = np.sqrt((edgeLeft[0]-edgeRight[0])*(edgeLeft[0]-edgeRight[0]) +
+						 (edgeLeft[1]-edgeRight[1])*(edgeLeft[1]-edgeRight[1]))
+
+			height = np.sqrt((edgeTop[0]-edgeBot[0])*(edgeTop[0]-edgeBot[0]) +
+						 (edgeTop[1]-edgeBot[1])*(edgeTop[1]-edgeBot[1]))
+
+
 			box = np.int0(box)
 			# is it a big enough box?
 
-			segments1 = [[]]
-			segments2 = [[]]
 			if cv2.contourArea(box) >= minBoxArea:
 				if (cv2.contourArea(cnt) != 0): 
 					# does it look like a rectangle?
@@ -181,6 +208,7 @@ def processFrame():
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 2)
 
+
 	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
 		found = False
 		# let's see if the ratios we found are consistent between all the segments
@@ -205,7 +233,7 @@ def processFrame():
 						center1X, center1Y = rect1[0]
 						center2X, center2Y = rect2[0]
 						segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
-						segmentSepY = cetner2Y - cetner2Y
+						segmentSepY = center2Y - center2Y
 						sepXErrorAspect = (segmentSepX - targetSepX) / targetSepX
 						sepYErrorAspect = (segmentSepY - targetSepY) / targetSepY
 						if (abs(sepXErrorAspect) <= aspectRatioTol) and (abs(sepYErrorAspect <- aspectRatioTol)):
