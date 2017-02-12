@@ -190,22 +190,38 @@ def processFrame():
 		targetWidthRatio = target1Width / target2Width			
 		targetHeightRatio = target1Height / target2Height
 		for rect1 in segments1:
-			width1, height1 = segments1[1]
+			width1, height1 = rect1[1]
 			for rect2 in segments2:	
-				width2, height2 = segments2[1]
+				width2, height2 = rect2[1]
 				heightRatio = height1 / height2
-				heightErrorAspect = (heightRatio / targetHeightRatio) / targetHeightRatio
+				heightErrorAspect = (heightRatio - targetHeightRatio) / targetHeightRatio
 				if (abs(heightErrorAspect) <= aspectRatioTol):
 					widthRatio = width1 / width2
-					widthErrorAspect = (widthRatio / targetWidthRatio) / targetWidthRatio
-					if (abs(widthErrorAspect) <- aspectRatioTol):
+					widthErrorAspect = (widthRatio - targetWidthRatio) / targetWidthRatio
+					if (abs(widthErrorAspect) <= aspectRatioTol):
 						# each segment appears the right size relative to each other, how about the expected 
 						# separation relative to each other?  Does that match as well on the segments?
 						targetSepX, targetSepY = target['RectSep']
-						center1X, center1Y = segments1[0]
-						center2X, center2Y = segments2[0]
-						segmentSepX = center2X - center1X		# row, col coordinate system with top left the origin
+						center1X, center1Y = rect1[0]
+						center2X, center2Y = rect2[0]
+						segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
 						segmentSepY = cetner2Y - cetner2Y
+						sepXErrorAspect = (segmentSepX - targetSepX) / targetSepX
+						sepYErrorAspect = (segmentSepY - targetSepY) / targetSepY
+						if (abs(sepXErrorAspect) <= aspectRatioTol) and (abs(sepYErrorAspect <- aspectRatioTol)):
+							found = True
+							allPoints = rect1
+							allPoints.append(rect2)
+							foundTarget = cv2.minAreaRect(allPoints)	#minumum bounding rectangle of the contour
+							foundBox = cv2.boxPoints(rect) 	
+							if args.debug==True: 
+								cv2.drawContours(frame,[box], 0, (0,255,0), 2)			#best fit box (rotated) to the shape
+							allPoints = target['Rects'][0]
+							allPoints.append(target['Rects'][1])
+							targetRect = cv2.minAreaRect(allPoints)		#actual target extents
+							targetBox = cv2.boxPoints(targetRect)		#best fit box to target extents
+
+#							distance = Target height in ft. (10/12) * YRes / (2*PixelHeight*tan(viewAngle of camera))
 
 
 
