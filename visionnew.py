@@ -12,6 +12,7 @@
 from __future__ import print_function
 import cv2
 import numpy as np
+import math
 import time
 import argparse
 import socket
@@ -85,8 +86,8 @@ def initCamera(id = 0):
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 
-	resX = fovX / xSize
-	resY = fovY / ySize
+	resX = fovX / xSize		# degrees/pixel
+	resY = fovY / ySize		# degrees/pixel
 
 	return (resX,resY,camera)
 
@@ -104,8 +105,9 @@ fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
-fovX = 62.39	# degrees Horizontal FOV estimated for MS Lifecam 3000 HD
-fovY = 34.3		# degrees Vertical FOV for MS Lifecam 3000 HD
+fovX = 62.39		# degrees Horizontal FOV estimated for MS Lifecam 3000 HD
+fovY = 34.3			# degrees Vertical FOV for MS Lifecam 3000 HD
+cameraAngle = 0.0	# degrees inclination
 send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
 ##############################################################################################
 #
@@ -197,14 +199,10 @@ def processFrame():			# This function does all of the image processing on a sing
 			botLeft = box[0]
 			botRight = box[0]
 			for i in range(1,4):
-				if (box[i][0] < centerX) and (box[i][1] < centerY): 
-					topLeft = box[i]
-				if (box[i][0] < centerX) and (box[i][1] > centerY): 
-					botLeft = box[i]
-				if (box[i][0] > centerX) and (box[i][1] < centerY): 
-					topRight = box[i]
-				if (box[i][0] > centerX) and (box[i][1] > centerY): 
-					botRight = box[i]
+				if (box[i][0] < centerX) and (box[i][1] < centerY): topLeft = box[i]
+				if (box[i][0] < centerX) and (box[i][1] > centerY): botLeft = box[i]
+				if (box[i][0] > centerX) and (box[i][1] < centerY): topRight = box[i]
+				if (box[i][0] > centerX) and (box[i][1] > centerY): botRight = box[i]
 
 			edgeTop = [(topLeft[0]+topRight[0])/2, (topLeft[1]+topRight[1])/2]
 			edgeBot = [(botLeft[0]+botRight[0])/2, (botLeft[1]+botRight[1])/2]
@@ -249,6 +247,7 @@ def processFrame():			# This function does all of the image processing on a sing
 	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
 		# let's see if the ratios we found are consistent between all the segments
 		# at a given range, all target segment ratios should match all segment ratios relative to each other
+
 		target1Width, target1Height = target['Rects'][0]
 		target2Width, target2Height = target['Rects'][1]
 
@@ -279,31 +278,53 @@ def processFrame():			# This function does all of the image processing on a sing
 						center1X, center1Y = rect1[0]
 						center2X, center2Y = rect2[0]
 						segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
-						segmentSepY = center2Y - center2Y
+						segmentSepY = center2Y - center1Y
 						sepXError = (segmentSepX - targetSepXPixels)
 						sepYError = (segmentSepY - targetSepYPixels)
 
 						if ((abs(sepXError) <= sepPixelTol) and (abs(sepYError) <= sepPixelTol)):
 							found = True
-							allPoints = rect1
-							allPoints.append(rect2)
-							foundTarget = cv2.minAreaRect(allPoints)	#minumum bounding rectangle of the contour
-							foundBox = cv2.boxPoints(rect) 	
+							minX = 1.e6
+							minY = 1.e6
+							maxX = -1
+							maxY = -1
+
+							box = cv2.boxPoints(rect1)
+							for i in range(0,4):
+								if (box[i][0] < minX): minX = box[i][0]
+								if (box[i][0] > maxX): maxX = box[i][0]
+								if (box[i][1] < minY): minY = box[i][1]
+								if (box[i][1] > maxY): maxY = box[i][1]
+
+							box = cv2.boxPoints(rect2)
+							for i in range(0,4):
+								if (box[i][0] < minX): minX = box[i][0]
+								if (box[i][0] > maxX): maxX = box[i][0]
+								if (box[i][1] < minY): minY = box[i][1]
+								if (box[i][1] > maxY): maxY = box[i][1]
+
+							foundBox = [[minX,minY],
+										[maxX,minY],
+										[maxX,maxY],
+										[minX,maxY]]	
+
+							targetTotalHeight = (height1/2.0) + (height2/2.0) + targetSepY 				# inches
+							slantRange = (targetTotalHeight/2.0) / math.tan((maxY-minY)/2) / 12.0		# feet
+
+							foundBox = np.array(foundBox, dtype=np.int32)
+
 							if args.debug==True: 
-								cv2.drawContours(frame,[box], 0, (0,255,0), 2)			#best fit box (rotated) to the shape
-							allPoints = target['Rects'][0]
-							allPoints.append(target['Rects'][1])
-							targetRect = cv2.minAreaRect(allPoints)		#actual target extents
-							targetBox = cv2.boxPoints(targetRect)		#best fit box to target extents
+								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)			#best fit box (rotated) to the shape
+
 
 #							distance = Target height in ft. (10/12) * YRes / (2*PixelHeight*tan(viewAngle of camera))
 
 
-	return (ret, thresh, frame, boxCenters)
+	return (ret, thresh, frame, found, slantRange)
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
-	ret, thresh, frame, boxCenters = processFrame()
+	ret, thresh, frame, found, slantRange = processFrame()
 
 	if ret:		
 		runtime=time.time()-start_time
@@ -321,6 +342,9 @@ while(camera.isOpened()):								# Main Processing Loop
 			cv2.putText(frame,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
 			cv2.putText(frame,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
 			cv2.putText(frame,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)	
+			if found:
+				slantRangeStr = 'Slant Range (ft): '+"%0.2f" % (slantRange)
+				cv2.putText(frame,slantRangeStr,(10,110),font,0.5,(255,255,255),1)
 			if args.thresh:
 				cv2.imshow('Thresholded Image',thresh)		
 			else:
