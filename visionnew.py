@@ -105,9 +105,10 @@ fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
-fovX = 62.39		# degrees Horizontal FOV estimated for MS Lifecam 3000 HD
-fovY = 34.3			# degrees Vertical FOV for MS Lifecam 3000 HD
-cameraAngle = 0.0	# degrees inclination
+fovX = math.radians(62.39)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
+fovY = math.radians(34.3)			# Vertical FOV for MS Lifecam 3000 HD
+cameraAngle = math.radians(0.0)		# degrees inclination
+imageBinaryThresh = 100				# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
 ##############################################################################################
 #
@@ -125,7 +126,7 @@ send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (Robio
 targetHigh = {
 	'NumRects' : 2,
 	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
-	'RectSep' : [0.0,5.0], #inches width, height in separation between rectanglestargetHighRectSep,
+	'RectSep' : [0.0,5.0], #inches width, height in separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
 	'RectOrient' : 0,  #degrees ideal from horizontal
@@ -182,11 +183,15 @@ def processFrame():			# This function does all of the image processing on a sing
 	found = False
 	segments1 = []		# found segment array for rectangle 1
 	segments2 = []		# found segment array for rectangle 2
+	aimPoint = []		# empty until found
+	slantRange = -1.0	# negative means not set
+	bearing = 1.e6		# nonsense until set
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
-		ret,thresh = cv2.threshold(img2,100,255,0)	# get a binary image of only the brightest areas
-		im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
+		img2 = thresh.copy()
+		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
@@ -308,23 +313,28 @@ def processFrame():			# This function does all of the image processing on a sing
 										[maxX,maxY],
 										[minX,maxY]]	
 
-							targetTotalHeight = (height1/2.0) + (height2/2.0) + targetSepY 				# inches
-							slantRange = (targetTotalHeight/2.0) / math.tan((maxY-minY)/2) / 12.0		# feet
-
+							targetTotalHeight = (target1Height/2.0) + (target2Height/2.0) + targetSepY 			# inches
+							slantRange = (targetTotalHeight/12.0 * ySize) / (2.0 * (maxY-minY) * math.tan(fovY))
+							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
+							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
 							if args.debug==True: 
-								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)			#best fit box (rotated) to the shape
+								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
+								apX = np.int0(aimPoint[0])	
+								apY = np.int0(aimPoint[1])
+								aimLineStart = (apX-10,apY)
+								aimLineStop  = (apX+10,apY)
+								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
+								aimLineStart = (apX,apY-10)
+								aimLineStop  = (apX,apY+10)							
+								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
-
-#							distance = Target height in ft. (10/12) * YRes / (2*PixelHeight*tan(viewAngle of camera))
-
-
-	return (ret, thresh, frame, found, slantRange)
+	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
-	ret, thresh, frame, found, slantRange = processFrame()
+	ret, thresh, frame, found, aimPoint, slantRange, bearing = processFrame()
 
 	if ret:		
 		runtime=time.time()-start_time
@@ -338,17 +348,23 @@ while(camera.isOpened()):								# Main Processing Loop
 			fpsAvg = fpsSum / fpsCount
 			if (fpsCount > 1) and (fps < fpsMin): fpsMin = fps  #discard first time through
 			if fps > fpsMax: fpsMax = fps
-			cv2.putText(frame,'FPS: '+str(fps),(10,30),font,0.5,(255,255,255),1)
-			cv2.putText(frame,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
-			cv2.putText(frame,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
-			cv2.putText(frame,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)	
+
+			if (args.thresh):
+				show = thresh
+			else:
+				show = frame
+
+			cv2.putText(show,'FPS: '+str(fps),(10,30),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)	
 			if found:
 				slantRangeStr = 'Slant Range (ft): '+"%0.2f" % (slantRange)
-				cv2.putText(frame,slantRangeStr,(10,110),font,0.5,(255,255,255),1)
-			if args.thresh:
-				cv2.imshow('Thresholded Image',thresh)		
-			else:
-				cv2.imshow('Result',frame)
+				cv2.putText(show,slantRangeStr,(10,110),font,0.5,(255,255,255),1)
+				bearingStr = 'Bearing (deg): '+"%0.2f" % (bearing)
+				cv2.putText(show,bearingStr,(10,130),font,0.5,(255,255,255),1)				
+
+			cv2.imshow('Result',show)
 
 		if (cv2.waitKey(1) & 0xFF == ord('q')):
 			break
