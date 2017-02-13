@@ -1,4 +1,14 @@
 #!C:\Program Files\Anaconda2\python.exe
+#
+# Vision Processing Code for 2017 FRC
+# FRC Team 3140 Farragut Flaship, Farragut High School, Knoxville Tennessee
+#
+# Python code intended to run on robot coprocessor (Kangaroo in our case)
+# with 2 cameras.  A "High" target camera for the Boiler vision target and
+# a "Low" target camera for the Gear Peg vision target.
+#
+
+
 from __future__ import print_function
 import cv2
 import numpy as np
@@ -9,15 +19,20 @@ import re #used to check ip regex
 import sys #
 from pdb import set_trace as br
 
+# Routines to parse command line arguments
+
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
-#define an error printing function for error reporting to terminal STD error IO stream
+# Define an error printing function for error reporting to terminal STD error IO stream
+
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+# Functions to handle UDP/IP communications
 
 def initUdp(udp_ip,udp_port):
 	global UDP_IP
@@ -42,12 +57,11 @@ def initUdp(udp_ip,udp_port):
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
 	return UDP_SOCK
+
 def udpSend(message,sock):
 	sock.sendto(message, (UDP_IP, UDP_PORT))
 	if args.debug:
 		print('Sent:'+message)
-
-send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
 
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
@@ -58,39 +72,53 @@ def initCamera(id = 0):
 	#camera.set(cv2.CV_CAP_PROP_FRAME_WIDTH, 640)
 	#camera.set(cv2.CV_CAP_PROP_FRAME_HEIGHT, 480)
 
-#	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
-#	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
-	camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) 
-	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) 
+	if (id==0) : 			# max resolution for boiler target								
+		xSize = 1280
+		ySize = 720
+	else:					# decent resolution for gear target
+ 		xSize = 640
+		ySize = 480
+											
+	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
+	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
 	camera.set(cv2.CAP_PROP_BRIGHTNESS, 220) 
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
-	return camera
 
-############## Parameter Initialization ##################################################
+	resX = fovX / xSize
+	resY = fovY / ySize
+
+	return (resX,resY,camera)
+
+############## Parameter Initialization #############################/33333#####################
 filename = args.file
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .4
-areaRatio = 1.2 # tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 100 # minimum box size to consider	if ret==True:
-targetSought = 0 # High target camera = 0, Low target camera = 1 
+aspectRatioTol = .4	# tolerance on the degree of fit in width/height aspects to expected
+areaRatio = 1.2 	# tolerance for how close the contour matches a best fit rectanglar box
+minBoxArea = 100 	# minimum box size to consider	if ret==True:
+targetSought = 0 	# High target camera = 0, Low target camera = 1 
+sepPixelTol = 15 	# pixel error tolerance on expected separations of targets in the frame
 start_time=time.time() #for diagnostics
 runtime = start_time
 fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
-#########################################################################################
-
+fovX = 62.39	# degrees Horizontal FOV estimated for MS Lifecam 3000 HD
+fovY = 34.3		# degrees Vertical FOV for MS Lifecam 3000 HD
+send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
+##############################################################################################
+#
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
 # Defined as attributes of rectangles and their expected interdependices with 
 # each other and the background
-
-###### High Target (Boiler)################################################################
-## Boiler target has two rectangular reflective tapes mounted horizontally around the
-## funnel.  They are parallel separated by 2 inches.  The top tape is 4 inches tall and
-## the bottom tape is 2 inches tall.  The diameter of the funnel they circle is 15 inches.
-## The tape won't reflect off axis so it will likely appear less than the full 15 inches.
+#
+###### High Target (Boiler) ##################################################################
+#
+# Boiler target has two rectangular reflective tapes mounted horizontally around the
+# funnel.  They are parallel separated by 2 inches.  The top tape is 4 inches tall and
+# the bottom tape is 2 inches tall.  The diameter of the funnel they circle is 15 inches.
+# The tape won't reflect off axis so it will likely appear less than the full 15 inches.
 
 targetHigh = {
 	'NumRects' : 2,
@@ -102,78 +130,91 @@ targetHigh = {
 	'RectAngleTol' : 5 #degrees from horizontal
 	}
 
-###### Low Target (Peg) ###################################################################
-## Gear Peg target has two rectangular reflective tapes mounted vertically centered with
-## the Peg in the middle.  They are both 2 inches wide by 5 inches tall and separated by
-## 8.25 inches between their centerlines.
-
+###### Low Target (Peg) ######################################################################
+#
+# Gear Peg target has two rectangular reflective tapes mounted vertically centered with
+# the Peg in the middle.  They are both 2 inches wide by 5 inches tall and separated by
+# 8.25 inches between their centerlines.
 
 targetLow = dict(targetHigh)
 targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
 
-def selectTarget (targetSought = 0) :
-	if targetSought == 0:
-		camera = cameraHigh
-		target = targetHigh
-	else :
-		camera = cameraLow
-		target = targetLow
-	return (camera,target)
 
 if args.file:
 	camera = cv2.VideoCapture(filename)
 	cameraHigh = camera	# cameras are not used when reading from a saved test video
 	cameraLow = camera	# cameras are not used when reading from a saved test video
+	xSize = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+	ySize = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+	resX = fovX / xSize
+	resY = fovY / ySize
+	resXHigh = resX
+	resXLow = resX
+	resYHigh = resY
+	resYLow = resY
 else:
-	cameraHigh = initCamera(0)
-	cameraLow = initCamera(1)
+	resXHigh, resYHigh, cameraHigh = initCamera(0)
+	resXLow, resYLow, cameraLow = initCamera(1)
 
-camera, target = selectTarget(0)
+def selectTarget (targetSought = 0) :
+	if targetSought == 0:
+		camera = cameraHigh
+		target = targetHigh
+		resX = resXHigh
+		resY = resYHigh
+	else :
+		camera = cameraLow
+		target = targetLow
+		resX = resXLow
+		resY = resYLow
+	return (resX,resY,camera,target)
 
-def processFrame():
+resX, resY, camera, target = selectTarget(0)
+
+def processFrame():			# This function does all of the image processing on a single frame
 
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
 	ret, frame = camera.read()
 	thresh = 0
+	found = False
+	segments1 = []		# found segment array for rectangle 1
+	segments2 = []		# found segment array for rectangle 2
 
 	if ret==True:
-		img2 = frame[:,:,1]  #green band
-		ret,thresh = cv2.threshold(img2,100,255,0)
+		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
+		ret,thresh = cv2.threshold(img2,100,255,0)	# get a binary image of only the brightest areas
 		im2, contours, hierarchy = cv2.findContours(thresh,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-		segments1 = []		# found segment array for rectangle 1
-		segments2 = []		# found segment array for rectangle 2
 
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
 			box = cv2.boxPoints(rect) #best fit box (rotated) to the shape
-
+			
 			centerX, centerY = rect[0]
 
-			for i in range(0,3):
-				if i == 0:
-					topLeft = box[0]
-					botLeft = box[0]
-					topRight = box[0]
-					botRight = box[0]
-				else:
-					if (box[i][0] < centerX) and (box[i][1] < centerY): topLeft = box[i]
-					if (box[i][0] > centerX) and (box[i][1] < centerY): botLeft = box[i]
-					if (box[i][0] < centerX) and (box[i][1] > centerY): topRight = box[i]
-					if (box[i][0] > centerX) and (box[i][1] > centerY): botRight = box[i]
+			topLeft = box[0]	# make certain always has a value
+			topRight = box[0]
+			botLeft = box[0]
+			botRight = box[0]
+			for i in range(1,4):
+				if (box[i][0] < centerX) and (box[i][1] < centerY): 
+					topLeft = box[i]
+				if (box[i][0] < centerX) and (box[i][1] > centerY): 
+					botLeft = box[i]
+				if (box[i][0] > centerX) and (box[i][1] < centerY): 
+					topRight = box[i]
+				if (box[i][0] > centerX) and (box[i][1] > centerY): 
+					botRight = box[i]
 
 			edgeTop = [(topLeft[0]+topRight[0])/2, (topLeft[1]+topRight[1])/2]
 			edgeBot = [(botLeft[0]+botRight[0])/2, (botLeft[1]+botRight[1])/2]
 			edgeLeft = [(topLeft[0]+botLeft[0])/2, (topLeft[1]+botLeft[1])/2]
 			edgeRight = [(topRight[0]+botRight[0])/2, (topRight[1]+botRight[1])/2]
 
-			width = np.sqrt((edgeLeft[0]-edgeRight[0])*(edgeLeft[0]-edgeRight[0]) +
-						 (edgeLeft[1]-edgeRight[1])*(edgeLeft[1]-edgeRight[1]))
+			width = edgeRight[0] - edgeLeft[0]
+			height = edgeBot[1] - edgeTop[1]
 
-			height = np.sqrt((edgeTop[0]-edgeBot[0])*(edgeTop[0]-edgeBot[0]) +
-						 (edgeTop[1]-edgeBot[1])*(edgeTop[1]-edgeBot[1]))
-
-
+			rect = ((centerX,centerY),(width,height), 0.)
 			box = np.int0(box)
 			# is it a big enough box?
 
@@ -184,10 +225,6 @@ def processFrame():
 						# does it have the right orientation? 
 						centerX, centerY = rect[0]
 						width, height = rect[1]
-						if height > width: 	# make insensitive to 90 deg rotations due to minAreaRect results
-							h = width
-							width = height
-							height = h
 						if (height > 0):
 							# First box
 							targetWidth, targetHeight = target['Rects'][0]
@@ -210,33 +247,43 @@ def processFrame():
 
 
 	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
-		found = False
 		# let's see if the ratios we found are consistent between all the segments
 		# at a given range, all target segment ratios should match all segment ratios relative to each other
 		target1Width, target1Height = target['Rects'][0]
 		target2Width, target2Height = target['Rects'][1]
+
 		targetWidthRatio = target1Width / target2Width			
 		targetHeightRatio = target1Height / target2Height
+
 		for rect1 in segments1:
 			width1, height1 = rect1[1]
+
 			for rect2 in segments2:	
 				width2, height2 = rect2[1]
 				heightRatio = height1 / height2
 				heightErrorAspect = (heightRatio - targetHeightRatio) / targetHeightRatio
+
 				if (abs(heightErrorAspect) <= aspectRatioTol):
 					widthRatio = width1 / width2
 					widthErrorAspect = (widthRatio - targetWidthRatio) / targetWidthRatio
+
 					if (abs(widthErrorAspect) <= aspectRatioTol):
 						# each segment appears the right size relative to each other, how about the expected 
 						# separation relative to each other?  Does that match as well on the segments?
+
 						targetSepX, targetSepY = target['RectSep']
+						resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
+						resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
+						targetSepXPixels = targetSepX / resApparentX
+						targetSepYPixels = targetSepY / resApparentY
 						center1X, center1Y = rect1[0]
 						center2X, center2Y = rect2[0]
 						segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
 						segmentSepY = center2Y - center2Y
-						sepXErrorAspect = (segmentSepX - targetSepX) / targetSepX
-						sepYErrorAspect = (segmentSepY - targetSepY) / targetSepY
-						if (abs(sepXErrorAspect) <= aspectRatioTol) and (abs(sepYErrorAspect <- aspectRatioTol)):
+						sepXError = (segmentSepX - targetSepXPixels)
+						sepYError = (segmentSepY - targetSepYPixels)
+
+						if ((abs(sepXError) <= sepPixelTol) and (abs(sepYError) <= sepPixelTol)):
 							found = True
 							allPoints = rect1
 							allPoints.append(rect2)
@@ -252,11 +299,9 @@ def processFrame():
 #							distance = Target height in ft. (10/12) * YRes / (2*PixelHeight*tan(viewAngle of camera))
 
 
+	return (ret, thresh, frame, boxCenters)
 
-
-	return ret, thresh, frame, boxCenters
-
-while(camera.isOpened()):
+while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
 	ret, thresh, frame, boxCenters = processFrame()
 
