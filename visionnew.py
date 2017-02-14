@@ -319,8 +319,8 @@ def processFrame():			# This function does all of the image processing on a sing
 										[maxX,minY],
 										[maxX,maxY],
 										[minX,maxY]]	
-							br()
-							targetTotalHeight = (target1Height/2.0) + (target2Height/2.0) + targetSepY 			# inches
+							
+							targetTotalHeight = target1Height + target2Height + targetSepY 			# inches
 							slantRange = (targetTotalHeight/12.0 * ySize) / (2.0 * (maxY-minY) * math.tan(fovY))
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
