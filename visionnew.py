@@ -320,8 +320,9 @@ def processFrame():			# This function does all of the image processing on a sing
 										[maxX,maxY],
 										[minX,maxY]]	
 							
-							targetTotalHeight = target1Height + target2Height + targetSepY 			# inches
-							slantRange = (targetTotalHeight/12.0 * ySize) / (2.0 * (maxY-minY) * math.tan(fovY))
+							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
+							targetAngle = ((maxY-minY)/ySize) * fovY
+							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)

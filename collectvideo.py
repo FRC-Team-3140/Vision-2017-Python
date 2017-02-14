@@ -27,11 +27,11 @@ id = args.id
 
 
 fourcc = cv2.VideoWriter_fourcc(*'IYUV')
-out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
+out = cv2.VideoWriter('output.avi',fourcc, 20.0, (1280,720))
 
 camera = cv2.VideoCapture(id)
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640) 
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480) 
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) 
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) 
 camera.set(cv2.CAP_PROP_BRIGHTNESS, 150) 
 camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 camera.set(cv2.CAP_PROP_EXPOSURE,-11)
