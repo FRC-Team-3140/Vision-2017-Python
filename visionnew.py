@@ -107,6 +107,8 @@ fpsCount = 0
 fpsSum = 0
 fovX = math.radians(62.39)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
 fovY = math.radians(34.3)			# Vertical FOV for MS Lifecam 3000 HD
+#fovX = math.radians(62.8)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
+#fovY = math.radians(37.9)			# Vertical FOV for MS Lifecam 3000 HD
 cameraAngle = math.radians(0.0)		# degrees inclination
 imageBinaryThresh = 100				# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
@@ -126,7 +128,7 @@ send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (Robio
 targetHigh = {
 	'NumRects' : 2,
 	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
-	'RectSep' : [0.0,5.0], #inches width, height in separation between rectangle centers
+	'RectSep' : [0.0,7.0], #inches width, height in separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
 	'RectOrient' : 0,  #degrees ideal from horizontal
@@ -159,20 +161,25 @@ else:
 	resXHigh, resYHigh, cameraHigh = initCamera(0)
 	resXLow, resYLow, cameraLow = initCamera(1)
 
+
 def selectTarget (targetSought = 0) :
 	if targetSought == 0:
 		camera = cameraHigh
 		target = targetHigh
+		xSize = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+		ySize = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
 		resX = resXHigh
 		resY = resYHigh
 	else :
 		camera = cameraLow
 		target = targetLow
+		xSize = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
+		ySize = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
 		resX = resXLow
 		resY = resYLow
-	return (resX,resY,camera,target)
+	return (resX,resY,xSize,ySize,camera,target)
 
-resX, resY, camera, target = selectTarget(0)
+resX, resY, xSize, ySize, camera, target = selectTarget(0)
 
 def processFrame():			# This function does all of the image processing on a single frame
 
@@ -312,7 +319,7 @@ def processFrame():			# This function does all of the image processing on a sing
 										[maxX,minY],
 										[maxX,maxY],
 										[minX,maxY]]	
-
+							br()
 							targetTotalHeight = (target1Height/2.0) + (target2Height/2.0) + targetSepY 			# inches
 							slantRange = (targetTotalHeight/12.0 * ySize) / (2.0 * (maxY-minY) * math.tan(fovY))
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
@@ -339,7 +346,7 @@ while(camera.isOpened()):								# Main Processing Loop
 	if ret:		
 		runtime=time.time()-start_time
 
-		udpSend(str(runtime)+',12,34,Last',send_sock)
+#		udpSend(str(runtime)+',12,34,Last',send_sock)
 		if (args.debug):
 			fps = 1.0/(runtime - runtimeLast)
 			fps = np.int0(fps)
