@@ -107,15 +107,19 @@ fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
-#fovX = math.radians(62.39)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
-#fovY = math.radians(34.3)			# Vertical FOV for MS Lifecam 3000 HD
-fovX = math.radians(62.8)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
-fovY = math.radians(37.9)			# Vertical FOV for MS Lifecam 3000 HD
-#fovX = math.radians(62.8)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
-#fovY = math.radians(36.9)			# Vertical FOV for MS Lifecam 3000 HD
-cameraAngle = math.radians(0.0)		# degrees inclination
-imageBinaryThresh = 100				# Threshold to binarize the image data
-send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
+
+# Empircal but error-prone estimate was about 37 degrees fovY
+# Should calibrate on the field.  
+
+#fovX = math.radians(62.39)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
+#fovY = math.radians(34.3)				# Vertical FOV for MS Lifecam 3000 HD
+fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
+fovY = math.radians(37.9)				# Vertical FOV for MS Lifecam 3000 HD
+#fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
+#fovY = math.radians(36.9)				# Vertical FOV for MS Lifecam 3000 HD
+cameraAngle = math.radians(0.0)			# degrees inclination
+imageBinaryThresh = 100					# Threshold to binarize the image data
+send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -323,6 +327,9 @@ def processFrame():			# This function does all of the image processing on a sing
 										[maxX,minY],
 										[maxX,maxY],
 										[minX,maxY]]	
+							
+# Consider change range calculation for boiler target to use the known Target Height location
+# on the funnel for range esimate rather than image extents.
 							
 							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
