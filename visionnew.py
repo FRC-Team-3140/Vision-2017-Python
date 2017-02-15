@@ -76,6 +76,8 @@ def initCamera(id = 0):
 	if (id==0) : 			# max resolution for boiler target								
 		xSize = 1280
 		ySize = 720
+#	xSize = 640
+#		ySize = 480
 	else:					# decent resolution for gear target
  		xSize = 640
 		ySize = 480
@@ -105,10 +107,12 @@ fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
-fovX = math.radians(62.39)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
-fovY = math.radians(34.3)			# Vertical FOV for MS Lifecam 3000 HD
+#fovX = math.radians(62.39)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
+#fovY = math.radians(34.3)			# Vertical FOV for MS Lifecam 3000 HD
+fovX = math.radians(62.8)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
+fovY = math.radians(37.9)			# Vertical FOV for MS Lifecam 3000 HD
 #fovX = math.radians(62.8)			#  Horizontal FOV estimated for MS Lifecam 3000 HD
-#fovY = math.radians(37.9)			# Vertical FOV for MS Lifecam 3000 HD
+#fovY = math.radians(36.9)			# Vertical FOV for MS Lifecam 3000 HD
 cameraAngle = math.radians(0.0)		# degrees inclination
 imageBinaryThresh = 100				# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803) # initializes UDP socket to send on (RobioRio static IP)
