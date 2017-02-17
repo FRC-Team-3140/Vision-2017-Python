@@ -25,14 +25,16 @@ parser.add_argument('--debug', default=False, action='store_const', const=True, 
 args=parser.parse_args()
 id = args.id
 
-
-fourcc = cv2.VideoWriter_fourcc(*'IYUV')
-out = cv2.VideoWriter('output.avi',fourcc, 20.0, (1280,720))
+xSize=640
+ySize=480
+#fourcc = cv2.VideoWriter_fourcc(*'IYUV')
+fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+out = cv2.VideoWriter('output.avi',fourcc, 20.0, (xSize, ySize))
 
 camera = cv2.VideoCapture(id)
-camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) 
-camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) 
-camera.set(cv2.CAP_PROP_BRIGHTNESS, 150) 
+camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize) 
+camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize) 
+camera.set(cv2.CAP_PROP_BRIGHTNESS, 220) 
 camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 camera.set(cv2.CAP_PROP_EXPOSURE,-11)
 
