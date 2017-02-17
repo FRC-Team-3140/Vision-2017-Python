@@ -84,7 +84,7 @@ def initCamera(id = 0):
 											
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
-	camera.set(cv2.CAP_PROP_BRIGHTNESS, 220) 
+	camera.set(cv2.CAP_PROPBRIGHTNESS, 220) 
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
 	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
 
@@ -107,6 +107,12 @@ fpsMin = 10000000
 fpsMax = -1
 fpsCount = 0
 fpsSum = 0
+hueMax = 127
+satMin = 71
+satMax = 255
+valMin = 135
+hueMin = 67
+valMax = 25
 
 # Empircal but error-prone estimate was about 37 degrees fovY
 # Should calibrate on the field.  
@@ -118,7 +124,7 @@ fovY = math.radians(37.9)				# Vertical FOV for MS Lifecam 3000 HD
 #fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
 #fovY = math.radians(36.9)				# Vertical FOV for MS Lifecam 3000 HD
 cameraAngle = math.radians(0.0)			# degrees inclination
-imageBinaryThresh = 100					# Threshold to binarize the image data
+imageBinaryThresh = 250					# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
@@ -135,8 +141,8 @@ send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioR
 
 targetHigh = {
 	'NumRects' : 2,
-#	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
-	'Rects' : [[14.0,4.0],[14.0,2.0]], #test target that is wrong dimensions
+	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
+#	'Rects' : [[14.0,4.0],[14.0,2.0]], #test target that is wrong dimensions
 	'RectSep' : [0.0,5.0], #inches width, height in separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
@@ -188,8 +194,31 @@ def selectTarget (targetSought = 0) :
 		resY = resYLow
 	return (resX,resY,xSize,ySize,camera,target)
 
-targetSought = 0		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
+targetSought = 1		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
 resX, resY, xSize, ySize, camera, target = selectTarget(targetSought)
+
+
+def hsvThreshold(img, hueMin, hueMax, satMin, satMax, valMin, valMax):
+
+#    hue, sat, val = cv2.split(img)
+    hue = img[:,:,0]
+    sat = img[:,:,1]
+    val = img[:,:,2]
+
+    hueBin = np.zeros(hue.shape, dtype=np.uint8)
+    satBin = np.zeros(sat.shape, dtype=np.uint8)
+    valBin = np.zeros(val.shape, dtype=np.uint8)
+
+    cv2.inRange(hue, hueMin, hueMax, hueBin)
+    cv2.inRange(sat, satMin, satMax, satBin)
+    cv2.inRange(val, valMin, valMax, valBin)
+
+    bin = np.copy(hueBin)
+    cv2.bitwise_and(satBin, bin, bin)
+    cv2.bitwise_and(valBin, bin, bin)
+
+    return bin
+
 
 def highTargetProcess():
 	boxes = []	#list of best fit boxes to contours
@@ -205,7 +234,7 @@ def highTargetProcess():
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
-		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
+		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESHBINARY)	# get a binary image of only the brightest areas
 		img2 = thresh.copy()
 		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
@@ -367,7 +396,24 @@ def lowTargetProcess():
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
-		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
+# get a binary image of only the brightest areas
+		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	
+
+# Convert BGR to HSV
+#		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+#		thresh = hsvThreshold(hsv, hueMin, hueMax, satMin, satMax, valMin, valMax)
+    
+    	# Morphological operations to clean up the image a bit
+#		eKernel = np.ones((1, 1), np.uint8)
+#		thresh = cv2.erode(thresh, eKernel, iterations=1)
+#		dKernel = np.ones((5, 5), np.uint8)
+#		thresh = cv2.dilate(thresh, dKernel, iterations=1)
+
+#		lower_green = np.array([40,20,20])
+#		upper_green = np.array([70,255,255])
+#		thresh = cv2.inRange(hsv, lower_green, upper_green)
+#		cv2.bitwise_and(frame,frame,mask=mask)
+
 		img2 = thresh.copy()
 		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
@@ -426,7 +472,6 @@ def lowTargetProcess():
 								if args.debug==True: 
 									cv2.drawContours(frame,[box], 0, (0,0,255), 2)
 
-
 	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
 		# let's see if the ratios we found are consistent between all the segments
 		# at a given range, all target segment ratios should match all segment ratios relative to each other
@@ -439,7 +484,6 @@ def lowTargetProcess():
 
 		for rect1 in segments1:
 			width1, height1 = rect1[1]
-
 			for rect2 in segments2:	
 				width2, height2 = rect2[1]
 				heightRatio = height1 / height2
