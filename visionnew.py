@@ -100,9 +100,9 @@ def initCamera(id = 0):
 ############## Parameter Initialization #############################/33333#####################
 filename = args.file
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .4	# tolerance on the degree of fit in width/height aspects to expected
-areaRatio = 1.2 	# tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 100 	# minimum box size to consider	if ret==True:
+aspectRatioTol = .6	# tolerance on the degree of fit in width/height aspects to expected
+areaRatio = 1.6 	# tolerance for how close the contour matches a best fit rectanglar box
+minBoxArea = 50 	# minimum box size to consider	if ret==True:
 targetSought = 0 	# High target camera = 0, Low target camera = 1 
 sepPixelTol = 15 	# pixel error tolerance on expected separations of targets in the frame
 start_time=time.time() #for diagnostics
@@ -123,10 +123,14 @@ valMax = 25
 
 #fovX = math.radians(62.39)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
 #fovY = math.radians(34.3)				# Vertical FOV for MS Lifecam 3000 HD
+
 fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
 fovY = math.radians(37.9)				# Vertical FOV for MS Lifecam 3000 HD
+
 #fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
 #fovY = math.radians(36.9)				# Vertical FOV for MS Lifecam 3000 HD
+rangeCalibrationScaleFactor = 0.7849	# from calibration test on range estimates in lbab
+rangeCalibrationBias = 0.2989			# from calibration test on range estimates in lab
 cameraAngle = math.radians(0.0)			# degrees inclination
 imageBinaryThresh = 100					# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
@@ -367,6 +371,7 @@ def highTargetProcess():
 							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
+							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)
@@ -544,6 +549,7 @@ def lowTargetProcess():
 							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
+							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)
