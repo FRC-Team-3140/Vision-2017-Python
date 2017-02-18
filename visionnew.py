@@ -25,6 +25,7 @@ from pdb import set_trace as br
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
+parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
@@ -208,7 +209,12 @@ def selectTarget (targetSought = 0) :
 		resY = resYLow
 	return (resX,resY,xSize,ySize,camera,target)
 
-targetSought = 1		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
+if (args.id) :
+	id = int(args.id)
+else:
+	id = 0
+
+targetSought = id		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
 resX, resY, xSize, ySize, camera, target = selectTarget(targetSought)
 
 
@@ -655,7 +661,6 @@ def lowTargetProcess():
 
 
 def processFrame():			# This function does all of the image processing on a single frame
-
 	if(targetSought==0):
 		ret, thresh, frame, found, aimPoint, slantRange, bearing = highTargetProcess()
 	else:
