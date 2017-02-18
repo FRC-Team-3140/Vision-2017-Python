@@ -572,6 +572,36 @@ def lowTargetProcess():
 								aimLineStop  = (apX,apY+10)							
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
+						else:	# look for a partially occluded 2nd segment
+							minX1 = 1.e6
+							minY1 = 1.e6
+							maxX1 = -1
+							maxY1 = -1	
+							minX2 = 1.e6
+							minY2 = 1.e6
+							maxX2 = -1
+							maxY2 = -1							
+							targetSepX, targetSepY = target['RectSep']
+							resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
+							resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
+							targetSepXPixels = targetSepX / resApparentX
+							targetSepYPixels = targetSepY / resApparentY
+							center1X, center1Y = rect1[0]
+							box = cv2.boxPoints(rect1)
+							for i in range(0,4):
+								if (box[i][0] < minX1): minX1 = box[i][0]
+								if (box[i][0] > maxX1): maxX1 = box[i][0]
+								if (box[i][1] < minY1): minY1 = box[i][1]
+								if (box[i][1] > maxY1): maxY1 = box[i][1]
+							box = cv2.boxPoints(rect2)
+							for i in range(0,4):
+								if (box[i][0] < minX2): minX2 = box[i][0]
+								if (box[i][0] > maxX2): maxX2 = box[i][0]
+								if (box[i][1] < minY2): minY2 = box[i][1]
+								if (box[i][1] > maxY2): maxY2 = box[i][1]
+
+
+
 	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
 
 
