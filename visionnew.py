@@ -181,6 +181,10 @@ if args.file:
 	cameraLow = camera	# cameras are not used when reading from a saved test video
 	xSize = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
 	ySize = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
+	if xSize==0:
+		xSize=640
+	if ySize==0:
+		ySize=480
 	resX = fovX / xSize
 	resY = fovY / ySize
 	resXHigh = resX
