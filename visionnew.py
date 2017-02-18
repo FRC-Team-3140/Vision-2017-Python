@@ -372,9 +372,6 @@ def highTargetProcess():
 										[maxX,maxY],
 										[minX,maxY]]	
 							
-# Consider change range calculation for boiler target to use the known Target Height location
-# on the funnel for range esimate rather than image extents.
-							
 							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
@@ -550,13 +547,10 @@ def lowTargetProcess():
 										[maxX,maxY],
 										[minX,maxY]]	
 							
-# Consider change range calculation for boiler target to use the known Target Height location
-# on the funnel for range esimate rather than image extents.
-							
 							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
-#							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)
@@ -572,34 +566,89 @@ def lowTargetProcess():
 								aimLineStop  = (apX,apY+10)							
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
-						else:	# look for a partially occluded 2nd segment
-							minX1 = 1.e6
-							minY1 = 1.e6
-							maxX1 = -1
-							maxY1 = -1	
-							minX2 = 1.e6
-							minY2 = 1.e6
-							maxX2 = -1
-							maxY2 = -1							
-							targetSepX, targetSepY = target['RectSep']
-							resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
-							resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
-							targetSepXPixels = targetSepX / resApparentX
-							targetSepYPixels = targetSepY / resApparentY
-							center1X, center1Y = rect1[0]
+					else:	# look for a partially occluded 2nd segment
+						minX1 = 1.e6
+						minY1 = 1.e6
+						maxX1 = -1
+						maxY1 = -1	
+						minX2 = 1.e6
+						minY2 = 1.e6
+						maxX2 = -1
+						maxY2 = -1							
+						targetSepX, targetSepY = target['RectSep']
+						resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
+						resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
+						targetSepXPixels = targetSepX / resApparentX
+						targetSepYPixels = targetSepY / resApparentY
+						center1X, center1Y = rect1[0]
+						center2X, center2Y = rect2[0]
+
+						box = cv2.boxPoints(rect1)
+						for i in range(0,4):
+							if (box[i][0] < minX1): minX1 = box[i][0]
+							if (box[i][0] > maxX1): maxX1 = box[i][0]
+							if (box[i][1] < minY1): minY1 = box[i][1]
+							if (box[i][1] > maxY1): maxY1 = box[i][1]
+						box = cv2.boxPoints(rect2)
+						for i in range(0,4):
+							if (box[i][0] < minX2): minX2 = box[i][0]
+							if (box[i][0] > maxX2): maxX2 = box[i][0]
+							if (box[i][1] < minY2): minY2 = box[i][1]
+							if (box[i][1] > maxY2): maxY2 = box[i][1]
+
+						segmentSepY = center2Y - center1Y				# partial find only has Y valid
+						sepYError = (segmentSepY - targetSepYPixels)
+						target1WidthPixels = target1Width / resApparentX
+						target2WidthPixels = target2Width / resApparentX
+						targetTotalWidthPixels = target1WidthPixels + target2WidthPixels + 6.25/12/resApparentX
+
+						if (abs(sepYError) <= sepPixelTol) and \
+							(((abs(abs(maxX2-minX1)-targetTotalWidthPixels)) <= sepPixelTol) or \
+							((abs(abs(maxX1-minX1)-targetTotalWidthPixels)) <= sepPixelTol)):
+
+							found = True							
+							minX = 1.e6
+							minY = 1.e6
+							maxX = -1
+							maxY = -1
+
 							box = cv2.boxPoints(rect1)
 							for i in range(0,4):
-								if (box[i][0] < minX1): minX1 = box[i][0]
-								if (box[i][0] > maxX1): maxX1 = box[i][0]
-								if (box[i][1] < minY1): minY1 = box[i][1]
-								if (box[i][1] > maxY1): maxY1 = box[i][1]
+								if (box[i][0] < minX): minX = box[i][0]
+								if (box[i][0] > maxX): maxX = box[i][0]
+								if (box[i][1] < minY): minY = box[i][1]
+								if (box[i][1] > maxY): maxY = box[i][1]
+
 							box = cv2.boxPoints(rect2)
 							for i in range(0,4):
-								if (box[i][0] < minX2): minX2 = box[i][0]
-								if (box[i][0] > maxX2): maxX2 = box[i][0]
-								if (box[i][1] < minY2): minY2 = box[i][1]
-								if (box[i][1] > maxY2): maxY2 = box[i][1]
+								if (box[i][0] < minX): minX = box[i][0]
+								if (box[i][0] > maxX): maxX = box[i][0]
+								if (box[i][1] < minY): minY = box[i][1]
+								if (box[i][1] > maxY): maxY = box[i][1]
 
+							foundBox = [[minX,minY],
+										[maxX,minY],
+										[maxX,maxY],
+										[minX,maxY]]	
+							
+							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0
+							targetAngle = ((maxY-minY)/ySize) * fovY
+							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
+							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
+							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							foundBox = np.array(foundBox, dtype=np.int32)
+
+							if args.debug==True: 
+								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
+								apX = np.int0(aimPoint[0])	
+								apY = np.int0(aimPoint[1])
+								aimLineStart = (apX-10,apY)
+								aimLineStop  = (apX+10,apY)
+								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
+								aimLineStart = (apX,apY-10)
+								aimLineStop  = (apX,apY+10)							
+								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 
 	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
