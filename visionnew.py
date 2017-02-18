@@ -28,6 +28,8 @@ parser.add_argument('--thresh', default=False, action='store_const', const=True,
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
+
+
 # Define an error printing function for error reporting to terminal STD error IO stream
 
 def eprint(*args, **kwargs):
@@ -64,6 +66,8 @@ def udpSend(message,sock):
 	if args.debug:
 		print('Sent:'+message)
 
+		
+
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
 	
@@ -76,11 +80,13 @@ def initCamera(id = 0):
 	if (id==0) : 			# max resolution for boiler target								
 		xSize = 1280
 		ySize = 720
-#	xSize = 640
+#		xSize = 640
 #		ySize = 480
 	else:					# decent resolution for gear target
  		xSize = 640
 		ySize = 480
+# 		xSize = 1280
+#		ySize = 720
 											
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
@@ -150,7 +156,7 @@ send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioR
 targetHigh = {
 	'NumRects' : 2,
 	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
-	'RectSep' : [0.0,7.0], #inches width, height in separation between rectangle centers
+	'RectSep' : [0.0,7.0], #inches X, Y separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
 	'RectOrient' : 0,  #degrees ideal from horizontal
@@ -165,6 +171,7 @@ targetHigh = {
 
 targetLow = dict(targetHigh)
 targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
+targetLow['RectSep'] = [8.25,0.0]	#inches X, Y separation between rectangle centers
 
 
 if args.file:
@@ -201,7 +208,7 @@ def selectTarget (targetSought = 0) :
 		resY = resYLow
 	return (resX,resY,xSize,ySize,camera,target)
 
-targetSought = 0		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
+targetSought = 1		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
 resX, resY, xSize, ySize, camera, target = selectTarget(targetSought)
 
 
@@ -546,10 +553,10 @@ def lowTargetProcess():
 # Consider change range calculation for boiler target to use the known Target Height location
 # on the funnel for range esimate rather than image extents.
 							
-							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
+							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
-							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+#							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							foundBox = np.array(foundBox, dtype=np.int32)
@@ -579,6 +586,7 @@ def processFrame():			# This function does all of the image processing on a sing
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
+
 	ret, thresh, frame, found, aimPoint, slantRange, bearing = processFrame()
 
 	if ret:		
