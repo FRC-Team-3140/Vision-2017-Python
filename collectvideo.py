@@ -17,6 +17,7 @@
 import cv2
 import numpy as np
 import argparse
+import time
 from pdb import set_trace as br
 
 parser = argparse.ArgumentParser(description="Captures Video from Bot Cameras")
@@ -34,9 +35,17 @@ out = cv2.VideoWriter('output.avi',fourcc, 20.0, (xSize, ySize))
 camera = cv2.VideoCapture(id)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize) 
 camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize) 
-camera.set(cv2.CAP_PROP_BRIGHTNESS, 220) 
+camera.set(cv2.CAP_PROP_BRIGHTNESS, 50)
+ret, frame = camera.read()				# workaround for broken Brightness setting
+
 camera.set(cv2.CAP_PROP_CONTRAST, 10) 
-camera.set(cv2.CAP_PROP_EXPOSURE,-11)
+camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, -1)
+camera.set(cv2.CAP_PROP_EXPOSURE,-100)
+camera.set(cv2.CAP_PROP_BRIGHTNESS, 30)
+
+#camera.set(cv2.CAP_PROP_GAIN,-100)
+#camera.set(cv2.CAP_PROP_SETTINGS, -1);    #pop up the driver window 
+
 
 while(camera.isOpened()):
 	# Capture frame-by-frame

@@ -84,9 +84,13 @@ def initCamera(id = 0):
 											
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
-	camera.set(cv2.CAP_PROPBRIGHTNESS, 220) 
+	camera.set(cv2.CAP_PROP_BRIGHTNESS, 50) # workaround for broken Brightness setting
+	ret, frame = camera.read()	
+
 	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
-	camera.set(cv2.CAP_PROP_EXPOSURE,-11) 
+	camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, -1)
+	camera.set(cv2.CAP_PROP_EXPOSURE,-100) 
+	camera.set(cv2.CAP_PROP_BRIGHTNESS, 30) 
 
 	resX = fovX / xSize		# degrees/pixel
 	resY = fovY / ySize		# degrees/pixel
@@ -124,7 +128,7 @@ fovY = math.radians(37.9)				# Vertical FOV for MS Lifecam 3000 HD
 #fovX = math.radians(62.8)				#  Horizontal FOV estimated for MS Lifecam 3000 HD
 #fovY = math.radians(36.9)				# Vertical FOV for MS Lifecam 3000 HD
 cameraAngle = math.radians(0.0)			# degrees inclination
-imageBinaryThresh = 250					# Threshold to binarize the image data
+imageBinaryThresh = 100					# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
@@ -142,8 +146,7 @@ send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioR
 targetHigh = {
 	'NumRects' : 2,
 	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
-#	'Rects' : [[14.0,4.0],[14.0,2.0]], #test target that is wrong dimensions
-	'RectSep' : [0.0,5.0], #inches width, height in separation between rectangle centers
+	'RectSep' : [0.0,7.0], #inches width, height in separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
 	'RectOrient' : 0,  #degrees ideal from horizontal
@@ -194,7 +197,7 @@ def selectTarget (targetSought = 0) :
 		resY = resYLow
 	return (resX,resY,xSize,ySize,camera,target)
 
-targetSought = 1		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
+targetSought = 0		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
 resX, resY, xSize, ySize, camera, target = selectTarget(targetSought)
 
 
@@ -234,7 +237,7 @@ def highTargetProcess():
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
-		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESHBINARY)	# get a binary image of only the brightest areas
+		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
 		img2 = thresh.copy()
 		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
