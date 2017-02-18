@@ -23,6 +23,7 @@ from pdb import set_trace as br
 parser = argparse.ArgumentParser(description="Captures Video from Bot Cameras")
 parser.add_argument('--id', type=int, action='store', default=0, help='Select Camera id 0 or 1')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
+parser.add_argument('--fname', action='store', help='filename')
 args=parser.parse_args()
 id = args.id
 
@@ -30,7 +31,12 @@ xSize=640
 ySize=480
 #fourcc = cv2.VideoWriter_fourcc(*'IYUV')
 fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-out = cv2.VideoWriter('output.avi',fourcc, 20.0, (xSize, ySize))
+if args.fname:
+	filename=args.fname
+else:
+	filename='output'
+if args.debug==False:
+	out = cv2.VideoWriter(filename+'.avi',fourcc, 20.0, (xSize, ySize))
 
 camera = cv2.VideoCapture(id)
 camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize) 
@@ -51,7 +57,8 @@ while(camera.isOpened()):
 	# Capture frame-by-frame
 	ret, frame = camera.read()
 	if ret==True:
-		out.write(frame)
+		if args.debug==False:
+			out.write(frame)
 		cv2.imshow('frame',frame)
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
@@ -60,5 +67,6 @@ while(camera.isOpened()):
 
 # When everything done, release the capture
 camera.release()
-out.release()
+if args.debug==False:
+	out.release()
 cv2.destroyAllWindows()
