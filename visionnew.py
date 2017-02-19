@@ -256,7 +256,7 @@ def highTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
-	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+	timeStamp = time.time()
 	ret, frame = camera.read()
 
 	if ret==True:
@@ -426,7 +426,7 @@ def lowTargetProcess():
 
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
-	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+	timeStamp = time.time()
 	ret, frame = camera.read()
 	thresh = 0
 	found = False
@@ -717,6 +717,7 @@ while(camera.isOpened()):								# Main Processing Loop
 		runtime=time.time()-start_time
 
 #		udpSend(str(runtime)+',12,34,Last',send_sock)
+		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
 		if (args.debug):
 			fps = 1.0/(runtime - runtimeLast)
 			fps = np.int0(fps)
@@ -731,7 +732,7 @@ while(camera.isOpened()):								# Main Processing Loop
 			else:
 				show = frame
 
-			cv2.putText(show,str(timeStamp),(10,30),font,0.5,(255,255,255),1)
+			cv2.putText(show,strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime(timeStamp)),(10,30),font,0.5,(255,255,255),1)
 			cv2.putText(show,'FPS: '+str(fps),(10,50),font,0.5,(255,255,255),1)
 			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,70),font,0.5,(255,255,255),1)
 			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,90),font,0.5,(255,255,255),1)
