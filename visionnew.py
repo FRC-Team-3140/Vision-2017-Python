@@ -248,8 +248,6 @@ def hsvThreshold(img, hueMin, hueMax, satMin, satMax, valMin, valMax):
 def highTargetProcess():
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
-	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
-	ret, frame = camera.read()
 	thresh = 0
 	found = False
 	segments1 = []		# found segment array for rectangle 1
@@ -258,12 +256,29 @@ def highTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
+	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
+	ret, frame = camera.read()
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
+
 		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
 		img2 = thresh.copy()
 		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+		if args.debug==True: # draw cross-hairs on image defining camera center
+			lineStart = (0,np.int0(ySize/2))
+			lineStop  = (np.int0(xSize-1),np.int0(ySize/2))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (0,np.int0(ySize/2-1))
+			lineStop  = (np.int0(xSize-1),np.int0(ySize/2-1))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (np.int0(xSize/2),0)
+			lineStop  = (np.int0(xSize/2),np.int0(ySize-1))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (np.int0(xSize/2),0)
+			lineStop  = (np.int0(xSize/2-1),np.int0(ySize-1))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
 
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
@@ -445,6 +460,19 @@ def lowTargetProcess():
 		img2 = thresh.copy()
 		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
+		if args.debug==True: # draw cross-hairs on image defining camera center
+			lineStart = (0,np.int0(ySize/2))
+			lineStop  = (np.int0(xSize-1),np.int0(ySize/2))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (0,np.int0(ySize/2-1))
+			lineStop  = (np.int0(xSize-1),np.int0(ySize/2-1))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (np.int0(xSize/2),0)
+			lineStop  = (np.int0(xSize/2),np.int0(ySize-1))
+			cv2.line(frame,lineStart,lineStop,(64,64,64),1,4)
+			lineStart = (np.int0(xSize/2),0)
+			lineStop  = (np.int0(xSize/2-1),np.int0(ySize-1))
+	
 		for cnt in contours:
 			rect = cv2.minAreaRect(cnt)  #minumum bounding rectangle of the contour
 			box = cv2.boxPoints(rect) #best fit box (rotated) to the shape
