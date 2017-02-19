@@ -18,6 +18,7 @@ import argparse
 import socket
 import re #used to check ip regex
 import sys #
+from time import gmtime, strftime
 from pdb import set_trace as br
 
 # Routines to parse command line arguments
@@ -247,6 +248,7 @@ def hsvThreshold(img, hueMin, hueMax, satMin, satMax, valMin, valMax):
 def highTargetProcess():
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
+	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
 	ret, frame = camera.read()
 	thresh = 0
 	found = False
@@ -255,6 +257,7 @@ def highTargetProcess():
 	aimPoint = []		# empty until found
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
+	elevation = 1.6		# nonsense until set
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
@@ -388,6 +391,7 @@ def highTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
 							if args.debug==True: 
@@ -401,12 +405,13 @@ def highTargetProcess():
 								aimLineStop  = (apX,apY+10)							
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
-	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
 
 def lowTargetProcess():
 
 	boxes = []	#list of best fit boxes to contours
 	boxCenters = [[]]  #centers of boxes
+	timeStamp = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
 	ret, frame = camera.read()
 	thresh = 0
 	found = False
@@ -415,6 +420,7 @@ def lowTargetProcess():
 	aimPoint = []		# empty until found
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
+	elevation = 1.6		# nonsense until set
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
@@ -563,6 +569,7 @@ def lowTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
 							if args.debug==True: 
@@ -647,6 +654,7 @@ def lowTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
 							if args.debug==True: 
@@ -661,21 +669,21 @@ def lowTargetProcess():
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 
-	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
 
 
 def processFrame():			# This function does all of the image processing on a single frame
 	if(targetSought==0):
-		ret, thresh, frame, found, aimPoint, slantRange, bearing = highTargetProcess()
+		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = highTargetProcess()
 	else:
-		ret, thresh, frame, found, aimPoint, slantRange, bearing = lowTargetProcess()
+		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = lowTargetProcess()
 
-	return (ret, thresh, frame, found, aimPoint, slantRange, bearing)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
 
-	ret, thresh, frame, found, aimPoint, slantRange, bearing = processFrame()
+	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = processFrame()
 
 	if ret:		
 		runtime=time.time()-start_time
@@ -695,15 +703,18 @@ while(camera.isOpened()):								# Main Processing Loop
 			else:
 				show = frame
 
-			cv2.putText(show,'FPS: '+str(fps),(10,30),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,50),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,70),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Avg: '+str(fpsAvg),(10,90),font,0.5,(255,255,255),1)	
+			cv2.putText(show,str(timeStamp),(10,30),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS: '+str(fps),(10,50),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,70),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,90),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Avg: '+str(fpsAvg),(10,110),font,0.5,(255,255,255),1)	
 			if found:
 				slantRangeStr = 'Slant Range (ft): '+"%0.2f" % (slantRange)
-				cv2.putText(show,slantRangeStr,(10,110),font,0.5,(255,255,255),1)
+				cv2.putText(show,slantRangeStr,(10,130),font,0.5,(255,255,255),1)
 				bearingStr = 'Bearing (deg): '+"%0.2f" % (bearing)
-				cv2.putText(show,bearingStr,(10,130),font,0.5,(255,255,255),1)				
+				cv2.putText(show,bearingStr,(10,150),font,0.5,(255,255,255),1)				
+				elevationStr = 'Elevation (deg): '+"%0.2f" % (elevation)
+				cv2.putText(show,elevationStr,(10,170),font,0.5,(255,255,255),1)				
 
 			cv2.imshow('Result',show)
 
