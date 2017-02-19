@@ -107,7 +107,7 @@ def initCamera(id = 0):
 ############## Parameter Initialization #############################/33333#####################
 filename = args.file
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .6	# tolerance on the degree of fit in width/height aspects to expected
+aspectRatioTol = .5	# tolerance on the degree of fit in width/height aspects to expected
 areaRatio = 1.6 	# tolerance for how close the contour matches a best fit rectanglar box
 minBoxArea = 50 	# minimum box size to consider	if ret==True:
 targetSought = 0 	# High target camera = 0, Low target camera = 1 
