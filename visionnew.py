@@ -24,12 +24,12 @@ from pdb import set_trace as br
 # Routines to parse command line arguments
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
-parser.add_argument('--file', type=str, action='store', default=0, help='Video Filename instead of camera')
+parser.add_argument('--ifile', type=str, action='store', default=0, help='Video Filename to use instead of camera')
+parser.add_argument('--ofile', type=str, action='store', default=0, help='Video Filename (without extension) to write results')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
 parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
-
 
 
 # Define an error printing function for error reporting to terminal STD error IO stream
@@ -103,10 +103,20 @@ def initCamera(id = 0):
 	resX = fovX / xSize		# degrees/pixel
 	resY = fovY / ySize		# degrees/pixel
 
-	return (resX,resY,camera)
+	outFile = 0				# initialize to 0 in case we aren't writing files
+	outResultsFile = 0		# initialize to 0 in case we aren't writing files
+	if args.ofile:
+		outputFileName = args.ofile
+		outputResultsFileName = args.ofile + 'Results'
+		fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+		outFile = cv2.VideoWriter(outputFileName+'.avi',fourcc, 20.0, (xSize, ySize))
+		outResultsFile = cv2.VideoWriter(outputResultsFileName+'.avi',fourcc, 20.0, (xSize, ySize))
 
-############## Parameter Initialization #############################/33333#####################
-filename = args.file
+
+	return (resX,resY,camera,outFile,outResultsFile)
+
+############## Parameter Initialization #########################################################
+visionVersion = 0.1	# change version number at significant improvement levels
 font = cv2.FONT_HERSHEY_SIMPLEX
 aspectRatioTol = .5	# tolerance on the degree of fit in width/height aspects to expected
 areaRatio = 1.6 	# tolerance for how close the contour matches a best fit rectanglar box
@@ -142,6 +152,10 @@ rangeCalibrationBias = 0.2989			# from calibration test on range estimates in la
 cameraAngle = math.radians(0.0)			# degrees inclination
 imageBinaryThresh = 100					# Threshold to binarize the image data
 send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
+outFileHigh = 0							# definte global variables
+outFileLow = 0
+outResultsFileHigh = 0
+outResultsFileLow = 0
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -176,8 +190,8 @@ targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rect
 targetLow['RectSep'] = [8.25,0.0]	#inches X, Y separation between rectangle centers
 
 
-if args.file:
-	camera = cv2.VideoCapture(filename)
+if args.ifile:
+	camera = cv2.VideoCapture(args.ifile)
 	cameraHigh = camera	# cameras are not used when reading from a saved test video
 	cameraLow = camera	# cameras are not used when reading from a saved test video
 	xSize = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -192,9 +206,17 @@ if args.file:
 	resXLow = resX
 	resYHigh = resY
 	resYLow = resY
+
+	if args.ofile:						# if ofile set, only put out a Results file
+		outputFileName = args.ofile
+		outputResultsFileName = args.ofile + 'Results'
+		fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+		outResultsFileHigh = cv2.VideoWriter(outputResultsFileName+'0'+'.avi',fourcc, 20.0, (np.int0(xSize), np.int0(ySize)))
+		outResultsFileLow = cv2.VideoWriter(outputResultsFileName+'1'+'.avi',fourcc, 20.0, (np.int0(xSize), np.int0(ySize)))
+
 else:
-	resXHigh, resYHigh, cameraHigh = initCamera(0)
-	resXLow, resYLow, cameraLow = initCamera(1)
+	resXHigh, resYHigh, cameraHigh, outFileHigh, outResultsFileHigh = initCamera(0)
+	resXLow, resYLow, cameraLow, outFileLow, outResultsFileLow = initCamera(1)
 
 
 def selectTarget (targetSought = 0) :
@@ -258,6 +280,7 @@ def highTargetProcess():
 	elevation = 1.6		# nonsense until set
 	timeStamp = time.time()
 	ret, frame = camera.read()
+	if(args.ofile and (not args.ifile)): outFileHigh.write(frame)
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
@@ -409,7 +432,7 @@ def highTargetProcess():
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
-							if args.debug==True: 
+							if (args.debug or args.ofile):
 								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
 								apX = np.int0(aimPoint[0])	
 								apY = np.int0(aimPoint[1])
@@ -428,6 +451,7 @@ def lowTargetProcess():
 	boxCenters = [[]]  #centers of boxes
 	timeStamp = time.time()
 	ret, frame = camera.read()
+	if(args.ofile and (not args.ifile)): outFileLow.write(frame)
 	thresh = 0
 	found = False
 	segments1 = []		# found segment array for rectangle 1
@@ -600,7 +624,7 @@ def lowTargetProcess():
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
-							if args.debug==True: 
+							if (args.debug or args.ofile):
 								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
 								apX = np.int0(aimPoint[0])	
 								apY = np.int0(aimPoint[1])
@@ -716,9 +740,8 @@ while(camera.isOpened()):								# Main Processing Loop
 	if ret:		
 		runtime=time.time()-start_time
 
-#		udpSend(str(runtime)+',12,34,Last',send_sock)
-		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
-		if (args.debug):
+#		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
+		if (args.debug or args.ofile):
 			fps = 1.0/(runtime - runtimeLast)
 			fps = np.int0(fps)
 			fpsCount = fpsCount + 1
@@ -732,30 +755,36 @@ while(camera.isOpened()):								# Main Processing Loop
 			else:
 				show = frame
 
-			cv2.putText(show,strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime(timeStamp)),(10,30),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS: '+str(fps),(10,50),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,70),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,90),font,0.5,(255,255,255),1)
-			cv2.putText(show,'FPS Avg: '+str(fpsAvg),(10,110),font,0.5,(255,255,255),1)	
+			cv2.putText(show,'FRC 3140 Farragut Flagship Vision vers: '+str(visionVersion),(10,30),font,0.5,(255,255,255),1)
+			cv2.putText(show,strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime(timeStamp)),(10,50),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS: '+str(fps),(10,70),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Min: '+str(fpsMin),(10,90),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Max: '+str(fpsMax),(10,110),font,0.5,(255,255,255),1)
+			cv2.putText(show,'FPS Avg: '+str(fpsAvg),(10,130),font,0.5,(255,255,255),1)	
 			if found:
 				slantRangeStr = 'Slant Range (ft): '+"%0.2f" % (slantRange)
-				cv2.putText(show,slantRangeStr,(10,130),font,0.5,(255,255,255),1)
+				cv2.putText(show,slantRangeStr,(10,150),font,0.5,(255,255,255),1)
 				bearingStr = 'Bearing (deg): '+"%0.2f" % (bearing)
-				cv2.putText(show,bearingStr,(10,150),font,0.5,(255,255,255),1)				
+				cv2.putText(show,bearingStr,(10,170),font,0.5,(255,255,255),1)				
 				elevationStr = 'Elevation (deg): '+"%0.2f" % (elevation)
-				cv2.putText(show,elevationStr,(10,170),font,0.5,(255,255,255),1)				
+				cv2.putText(show,elevationStr,(10,190),font,0.5,(255,255,255),1)				
 
-			cv2.imshow('Result',show)
+			if(args.debug): cv2.imshow('Result',show)
+			if((id == 0) and (outResultsFileHigh != 0)): outResultsFileHigh.write(show)
+			if((id == 1) and (outResultsFileLow != 0)): outResultsFileLow.write(show)
 
 		if (cv2.waitKey(1) & 0xFF == ord('q')):
 			break
 	else: break
-
-
 		
 
 
 # Release everything if job is finished
-camera.release()
-#out.release()
+cameraHigh.release()
+cameraLow.release()
+if (outFileHigh != 0): outFileHigh.release()
+if (outResultsFileHigh != 0): outResultsFileHigh.release()
+if (outFileLow != 0): outFileLow.release()
+if (outResultsFileLow != 0): outResultsFileLow.release()
+
 cv2.destroyAllWindows()
