@@ -740,7 +740,7 @@ while(camera.isOpened()):								# Main Processing Loop
 	if ret:		
 		runtime=time.time()-start_time
 
-#		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
+		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
 		if (args.debug or args.ofile):
 			fps = 1.0/(runtime - runtimeLast)
 			fps = np.int0(fps)
