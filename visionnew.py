@@ -37,9 +37,16 @@ args=parser.parse_args()
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-# Functions to handle UDP/IP communications
-
-def initUdp(udp_ip,udp_port):
+####################################################################
+# Functions to handle UDP/IP communications 
+#
+#			udpInit( udp_ip , udp_port ):
+#						-- Initialized a udp sockect at the port and ip specified
+#			updSend( message , sock ):
+# 						-- Send a message (string) to the specified socket and provide debug print back
+#			udpRecieve( sock ):
+#						--- Return a string found at the specified socket
+def udpInit(udp_ip,udp_port):
 	global UDP_IP
 	global UDP_PORT
 	#set ip address
@@ -61,8 +68,9 @@ def initUdp(udp_ip,udp_port):
 	#define socket
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
-	UDP_SOCK.setblocking(0)
+	UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
 	return UDP_SOCK
+
 def udpSend(message,sock):
 	sock.sendto(message, (UDP_IP, UDP_PORT))
 	if args.debug:
@@ -158,12 +166,12 @@ rangeCalibrationScaleFactor = 0.7849	# from calibration test on range estimates 
 rangeCalibrationBias = 0.2989			# from calibration test on range estimates in lab
 cameraAngle = math.radians(0.0)			# degrees inclination
 imageBinaryThresh = 100					# Threshold to binarize the image data
-send_sock=initUdp('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
+send_sock=udpInit('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
 outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-sock=initUdp('10.31.40.42',5803)		# initializes UDP socket to send to RobioRio static IP
+sock=udpInit('10.31.40.42',5803)		# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
