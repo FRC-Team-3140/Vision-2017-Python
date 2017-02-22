@@ -752,6 +752,7 @@ while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = processFrame()
 	if ret:	
+		runtime=time.time()-start_time
 #		udpSend(str(runtime)+',12,34,Last',sock)
 		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
 		# data, addr=udpRecieve(sock)
