@@ -61,13 +61,20 @@ def initUdp(udp_ip,udp_port):
 	#define socket
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
+	UDP_SOCK.setblocking(0)
 	return UDP_SOCK
-
 def udpSend(message,sock):
 	sock.sendto(message, (UDP_IP, UDP_PORT))
 	if args.debug:
 		print('Sent:'+message)
 
+def udpRecieve(sock):
+	try:
+		data, addr=sock.recvfrom(1024) #buffer size
+	except socket.error:
+		eprint('nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
+		return
+	return data, addr
 		
 
 def initCamera(id = 0):
@@ -82,13 +89,13 @@ def initCamera(id = 0):
 	if (id==0) : 			# max resolution for boiler target								
 		xSize = 1280
 		ySize = 720
-#		xSize = 640
-#		ySize = 480
+		# xSize = 640
+		# ySize = 480
 	else:					# decent resolution for gear target
- 		xSize = 640
+		xSize = 640
 		ySize = 480
-# 		xSize = 1280
-#		ySize = 720
+		# xSize = 1280
+		# ySize = 720
 											
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
@@ -156,6 +163,7 @@ outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
+sock=initUdp('10.31.40.42',5803)		# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -734,14 +742,13 @@ def processFrame():			# This function does all of the image processing on a sing
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
-
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = processFrame()
-
-	if ret:		
-		runtime=time.time()-start_time
-
-		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),send_sock)
-		if (args.debug or args.ofile):
+	if ret:	
+#		udpSend(str(runtime)+',12,34,Last',sock)
+		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
+		# data, addr=udpRecieve(sock)
+		if (args.debug):
+			runtime=time.time()-start_time
 			fps = 1.0/(runtime - runtimeLast)
 			fps = np.int0(fps)
 			fpsCount = fpsCount + 1
