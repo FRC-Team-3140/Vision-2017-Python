@@ -151,6 +151,9 @@ valMin = 135
 hueMin = 67
 valMax = 25
 
+cameraLoYOffset = -16.0/12.0 #feet offset of peg camera
+
+
 # Empircal but error-prone estimate was about 37 degrees fovY
 # Should calibrate on the field.  
 
@@ -637,6 +640,8 @@ def lowTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							bearingBot = slantRange*math.atan(sin(bearing)/(slantRange*math.cos(bearing)-cameraLoYOffset)
+							slantRangeBot = slantRange*math.sin(bearing)/math.sin(bearingBot)
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
@@ -722,6 +727,8 @@ def lowTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+							bearingBot = slantRange*math.atan(sin(bearing)/(slantRange*math.cos(bearing)-cameraLoYOffset)
+							slantRangeBot = slantRange*math.sin(bearing)/math.sin(bearingBot)
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
@@ -737,7 +744,7 @@ def lowTargetProcess():
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 
-	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRangeBot, bearingBot, elevation)
 
 
 def processFrame():			# This function does all of the image processing on a single frame
