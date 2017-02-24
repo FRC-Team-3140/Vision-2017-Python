@@ -641,8 +641,10 @@ def lowTargetProcess():
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							alpha = math,pi/2 - bearing
-							alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)
-							slantRangeBot = slantRange*math.sin(alpha)/math.sin(alphaBot)
+							if(bearing < 0.):
+								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)+cameraLoYOffset)
+							else
+								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)							slantRangeBot = slantRange*math.sin(alpha)/math.sin(alphaBot)
 							bearingBot = math.pi/2 - alphaBot
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
@@ -730,7 +732,10 @@ def lowTargetProcess():
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							alpha = math,pi/2 - bearing
-							alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)
+							if(bearing < 0.):
+								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)+cameraLoYOffset)
+							else
+								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)
 							slantRangeBot = slantRange*math.sin(alpha)/math.sin(alphaBot)
 							bearingBot = math.pi/2 - alphaBot
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
