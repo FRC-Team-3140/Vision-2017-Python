@@ -486,6 +486,8 @@ def lowTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
+	x = 0				# temp variable would like to pass back
+	y = 0				# temp variable would like to pass back
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
