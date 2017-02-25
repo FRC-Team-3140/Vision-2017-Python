@@ -72,7 +72,10 @@ def udpInit(udp_ip,udp_port):
 	return UDP_SOCK
 
 def udpSend(message,sock):
-	sock.sendto(message, (UDP_IP, UDP_PORT))
+	try:
+		sock.sendto(message, (UDP_IP, UDP_PORT))
+	except socket.error:
+		print('Warning: Could not connect to '+UDP_IP+', port:'+str(UDP_PORT))
 	if args.debug:
 		print('Sent:'+message)
 
@@ -81,7 +84,7 @@ def udpRecieve(sock):
 		data, addr=sock.recvfrom(1024) #buffer size
 	except socket.error:
 		eprint('nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
-		return
+		return '',''
 	return data, addr
 		
 
@@ -777,7 +780,7 @@ while(camera.isOpened()):								# Main Processing Loop
 		runtime=time.time()-start_time
 #		udpSend(str(runtime)+',12,34,Last',sock)
 		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
-		# data, addr=udpRecieve(sock)
+		data, addr=udpRecieve(sock)
 		if (args.debug):
 			runtime=time.time()-start_time
 			fps = 1.0/(runtime - runtimeLast)
