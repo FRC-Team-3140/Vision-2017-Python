@@ -137,7 +137,7 @@ aspectRatioTol = .5	# tolerance on the degree of fit in width/height aspects to 
 areaRatio = 1.6 	# tolerance for how close the contour matches a best fit rectanglar box
 minBoxArea = 50 	# minimum box size to consider	if ret==True:
 targetSought = 0 	# High target camera = 0, Low target camera = 1 
-sepPixelTol = 15 	# pixel error tolerance on expected separations of targets in the frame
+sepPixelTol = 25 	# pixel error tolerance on expected separations of targets in the frame
 start_time=time.time() #for diagnostics
 runtime = start_time
 fpsMin = 10000000
@@ -202,9 +202,9 @@ targetHigh = {
 # 8.25 inches between their centerlines.
 
 targetLow = dict(targetHigh)
-targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
-targetLow['RectSep'] = [8.25,0.0]	#inches X, Y separation between rectangle centers
-
+targetLow['Rects'] 			= [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
+targetLow['RectSep'] 		= [8.25,0.0]	#inches X, Y separation between rectangle centers
+targetLow['RectAngleTol']	= 20
 
 if args.ifile:
 	camera = cv2.VideoCapture(args.ifile)
