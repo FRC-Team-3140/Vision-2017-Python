@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--ifile', type=str, action='store', default=0, help='Video Filename to use instead of camera')
 parser.add_argument('--ofile', type=str, action='store', default=0, help='Video Filename (without extension) to write results')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
-parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
+parser.add_argument('--id', default=1, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
@@ -68,7 +68,8 @@ def udpInit(udp_ip,udp_port):
 	#define socket
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
-	UDP_SOCK.setblocking(1) # make the recieve not wait for the buffer to fill before continuing
+	UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
+	udpSend(str('0'),UDP_SOCK) # send simple packet so roboRIO gets the ip address to send to
 	return UDP_SOCK
 
 def udpSend(message,sock):
@@ -83,7 +84,7 @@ def udpRecieve(sock):
 	try:
 		data, addr=sock.recvfrom(1024) #buffer size
 	except socket.error:
-		eprint('nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
+		eprint('	Nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
 		return '',''
 	print(data)
 	return data, addr
@@ -179,7 +180,7 @@ outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-sock=udpInit('10.31.40.255',9876)		# initializes UDP socket to send to RobioRio static IP
+sock=udpInit('169.254.248.133',9876)		# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -260,10 +261,7 @@ def selectTarget (targetSought = 0) :
 		resY = resYLow
 	return (resX,resY,xSize,ySize,camera,target)
 
-if (args.id) :
-	id = int(args.id)
-else:
-	id = 0
+id = int(args.id)
 
 targetSought = id		# 0 = Boiler or "High" target; 1 = Peg/Gear or "Low" target
 resX, resY, xSize, ySize, camera, target = selectTarget(targetSought)
@@ -780,10 +778,11 @@ while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
 
 	# accept camera changes
+
 	data, addr=udpRecieve(sock) # get data for camera selection
-	if data='0':
+	if data=='0':
 		resX, resY, xSize, ySize, camera, target = selectTarget(0)
-	elif data='1':
+	elif data=='1':
 		resX, resY, xSize, ySize, camera, target = selectTarget(1)
 
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation,x,y= processFrame()
