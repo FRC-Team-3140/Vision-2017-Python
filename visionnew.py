@@ -72,7 +72,10 @@ def udpInit(udp_ip,udp_port):
 	return UDP_SOCK
 
 def udpSend(message,sock):
-	sock.sendto(message, (UDP_IP, UDP_PORT))
+	try:
+		sock.sendto(message, (UDP_IP, UDP_PORT))
+	except socket.error:
+		print('Warning: Could not connect to '+UDP_IP+', port:'+str(UDP_PORT))
 	if args.debug:
 		print('Sent:'+message)
 
@@ -81,7 +84,7 @@ def udpRecieve(sock):
 		data, addr=sock.recvfrom(1024) #buffer size
 	except socket.error:
 		eprint('nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
-		return
+		return '',''
 	return data, addr
 		
 
@@ -131,14 +134,14 @@ def initCamera(id = 0):
 	return (resX,resY,camera,outFile,outResultsFile)
 
 ############## Parameter Initialization #########################################################
-visionVersion = 0.1	# change version number at significant improvement levels
+visionVersion = 0.11	# change version number at significant improvement levels
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .5	# tolerance on the degree of fit in width/height aspects to expected
-areaRatio = 1.6 	# tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 50 	# minimum box size to consider	if ret==True:
-targetSought = 0 	# High target camera = 0, Low target camera = 1 
-sepPixelTol = 15 	# pixel error tolerance on expected separations of targets in the frame
-start_time=time.time() #for diagnostics
+aspectRatioTol = .5		# tolerance on the degree of fit in width/height aspects to expected
+areaRatio = 1.6 		# tolerance for how close the contour matches a best fit rectanglar box
+minBoxArea = 50 		# minimum box size to consider	if ret==True:
+targetSought = 0 		# High target camera = 0, Low target camera = 1 
+sepPixelTol = 25 		# pixel error tolerance on expected separations of targets in the frame
+start_time=time.time() 	#for diagnostics
 runtime = start_time
 fpsMin = 10000000
 fpsMax = -1
@@ -150,6 +153,8 @@ satMax = 255
 valMin = 135
 hueMin = 67
 valMax = 25
+deltaX = 16/12.0	#distance from camera to bot origin along short dimension of robot
+deltaY = 8/12.0		#distance from camera to bot origin along long dimension of robot
 
 cameraLoYOffset = -16.0/12.0 #feet offset of peg camera
 
@@ -205,9 +210,9 @@ targetHigh = {
 # 8.25 inches between their centerlines.
 
 targetLow = dict(targetHigh)
-targetLow['Rects'] =  [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
-targetLow['RectSep'] = [8.25,0.0]	#inches X, Y separation between rectangle centers
-
+targetLow['Rects'] 			= [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
+targetLow['RectSep'] 		= [8.25,0.0]	#inches X, Y separation between rectangle centers
+targetLow['RectAngleTol']	= 20
 
 if args.ifile:
 	camera = cv2.VideoCapture(args.ifile)
@@ -463,6 +468,14 @@ def highTargetProcess():
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
+def remap(bearing,slantRange):
+		x=slantRange*math.cos(math.pi/2-math.radians(bearing))
+		xPrime=x-deltaX
+		y=slantRange*math.sin(math.pi/2-math.radians(bearing))
+		yPrime=y-deltaY
+		bearingPrime=math.degrees(math.atan(xPrime/(yPrime+.00001)))
+		slantRangePrime=math.sqrt(yPrime**2+xPrime**2)
+		return x,y,bearingPrime,slantRangePrime
 
 def lowTargetProcess():
 
@@ -479,6 +492,8 @@ def lowTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
+	x = 0				# temp variable would like to pass back
+	y = 0				# temp variable would like to pass back
 
 	if ret==True:
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
@@ -638,14 +653,13 @@ def lowTargetProcess():
 							targetAngle = ((maxY-minY)/ySize) * fovY
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+							
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
-							alpha = math,pi/2 - bearing
-							if(bearing < 0.):
-								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)+cameraLoYOffset)
-							else
-								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)							slantRangeBot = slantRange*math.sin(alpha)/math.sin(alphaBot)
-							bearingBot = math.pi/2 - alphaBot
+							
+							x,y,bearing,slantRange=remap(bearing,slantRange)
+
+
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
@@ -731,13 +745,9 @@ def lowTargetProcess():
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
-							alpha = math,pi/2 - bearing
-							if(bearing < 0.):
-								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)+cameraLoYOffset)
-							else
-								alphaBot = slantRange*math.atan(sin(alpha)/(slantRange*math.cos(alpha)-cameraLoYOffset)
-							slantRangeBot = slantRange*math.sin(alpha)/math.sin(alphaBot)
-							bearingBot = math.pi/2 - alphaBot
+							
+							x,y,bearing,slantRange=remap(bearing,slantRange)
+
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
 							foundBox = np.array(foundBox, dtype=np.int32)
 
@@ -753,25 +763,27 @@ def lowTargetProcess():
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 
-	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRangeBot, bearingBot, elevation)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y)
 
 
 def processFrame():			# This function does all of the image processing on a single frame
+	x=0
+	y=0
 	if(targetSought==0):
 		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = highTargetProcess()
 	else:
-		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = lowTargetProcess()
+		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y= lowTargetProcess()
 
-	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y)
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
-	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = processFrame()
+	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation,x,y= processFrame()
 	if ret:	
 		runtime=time.time()-start_time
 #		udpSend(str(runtime)+',12,34,Last',sock)
 		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
-		# data, addr=udpRecieve(sock)
+		data, addr=udpRecieve(sock)
 		if (args.debug):
 			runtime=time.time()-start_time
 			fps = 1.0/(runtime - runtimeLast)
@@ -799,7 +811,9 @@ while(camera.isOpened()):								# Main Processing Loop
 				bearingStr = 'Bearing (deg): '+"%0.2f" % (bearing)
 				cv2.putText(show,bearingStr,(10,170),font,0.5,(255,255,255),1)				
 				elevationStr = 'Elevation (deg): '+"%0.2f" % (elevation)
-				cv2.putText(show,elevationStr,(10,190),font,0.5,(255,255,255),1)				
+				cv2.putText(show,elevationStr,(10,190),font,0.5,(255,255,255),1)
+				cv2.putText(show,'x: '+str(x),(10,210),font,0.5,(255,255,255),1)
+				cv2.putText(show,'y: '+str(y),(10,230),font,0.5,(255,255,255),1)						
 
 			if(args.debug): cv2.imshow('Result',show)
 			if((id == 0) and (outResultsFileHigh != 0)): outResultsFileHigh.write(show)
