@@ -173,13 +173,12 @@ fovY = math.radians(37.9)				# Vertical FOV for MS Lifecam 3000 HD
 rangeCalibrationScaleFactor = 0.7849	# from calibration test on range estimates in lbab
 rangeCalibrationBias = 0.2989			# from calibration test on range estimates in lab
 cameraAngle = math.radians(0.0)			# degrees inclination
-imageBinaryThresh = 100					# Threshold to binarize the image data
-send_sock=udpInit('10.31.40.42',5803)	# initializes UDP socket to send to RobioRio static IP
+imageBinaryThresh = 100					# Threshold to binarize the image data	# initializes UDP socket to send to RobioRio static IP
 outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-sock=udpInit('10.31.40.42',5803)		# initializes UDP socket to send to RobioRio static IP
+sock=udpInit('192.168.3.255',9876)		# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
