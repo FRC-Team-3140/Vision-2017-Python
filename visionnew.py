@@ -68,14 +68,14 @@ def udpInit(udp_ip,udp_port):
 	#define socket
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
-	UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
+	UDP_SOCK.setblocking(1) # make the recieve not wait for the buffer to fill before continuing
 	return UDP_SOCK
 
 def udpSend(message,sock):
-	try:
-		sock.sendto(message, (UDP_IP, UDP_PORT))
-	except socket.error:
-		print('Warning: Could not connect to '+UDP_IP+', port:'+str(UDP_PORT))
+	# try:
+	sock.sendto(message, (UDP_IP, UDP_PORT))
+	# except socket.error:
+		# print('Warning: Could not connect to '+UDP_IP+', port:'+str(UDP_PORT))
 	if args.debug:
 		print('Sent:'+message)
 
@@ -85,6 +85,7 @@ def udpRecieve(sock):
 	except socket.error:
 		eprint('nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
 		return '',''
+	print(data)
 	return data, addr
 		
 
@@ -134,7 +135,7 @@ def initCamera(id = 0):
 	return (resX,resY,camera,outFile,outResultsFile)
 
 ############## Parameter Initialization #########################################################
-visionVersion = 0.11	# change version number at significant improvement levels
+visionVersion = 0.12	# change version number at significant improvement levels
 font = cv2.FONT_HERSHEY_SIMPLEX
 aspectRatioTol = .5		# tolerance on the degree of fit in width/height aspects to expected
 areaRatio = 1.6 		# tolerance for how close the contour matches a best fit rectanglar box
@@ -178,7 +179,7 @@ outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-sock=udpInit('192.168.3.255',9876)		# initializes UDP socket to send to RobioRio static IP
+sock=udpInit('10.31.40.255',9876)		# initializes UDP socket to send to RobioRio static IP
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -777,12 +778,19 @@ def processFrame():			# This function does all of the image processing on a sing
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
+
+	# accept camera changes
+	data, addr=udpRecieve(sock) # get data for camera selection
+	if data='0':
+		resX, resY, xSize, ySize, camera, target = selectTarget(0)
+	elif data='1':
+		resX, resY, xSize, ySize, camera, target = selectTarget(1)
+
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation,x,y= processFrame()
 	if ret:	
 		runtime=time.time()-start_time
 #		udpSend(str(runtime)+',12,34,Last',sock)
 		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
-		data, addr=udpRecieve(sock)
 		if (args.debug):
 			runtime=time.time()-start_time
 			fps = 1.0/(runtime - runtimeLast)
