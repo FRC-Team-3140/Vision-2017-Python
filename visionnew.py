@@ -120,8 +120,8 @@ def initCamera(id = 0):
 	camera.set(cv2.CAP_PROP_EXPOSURE,-100) 
 	camera.set(cv2.CAP_PROP_BRIGHTNESS, 30) 
 
-	resX = fovX / xSize		# degrees/pixel
-	resY = fovY / ySize		# degrees/pixel
+	resX = fovX / xSize		# radians/pixel
+	resY = fovY / ySize		# radians/pixel
 
 	outFile = 0				# initialize to 0 in case we aren't writing files
 	outResultsFile = 0		# initialize to 0 in case we aren't writing files
@@ -136,7 +136,9 @@ def initCamera(id = 0):
 	return (resX,resY,camera,outFile,outResultsFile)
 
 ############## Parameter Initialization #########################################################
-visionVersion = 0.12	# change version number at significant improvement levels
+visionVersion = 0.13	# change version number at significant improvement levels
+						# version 	change
+						#	0.13	off-normal low peg target estimation
 font = cv2.FONT_HERSHEY_SIMPLEX
 aspectRatioTol = .5		# tolerance on the degree of fit in width/height aspects to expected
 areaRatio = 1.6 		# tolerance for how close the contour matches a best fit rectanglar box
@@ -211,7 +213,7 @@ targetHigh = {
 # 8.25 inches between their centerlines.
 
 targetLow = dict(targetHigh)
-targetLow['Rects'] 			= [[2.0,5.0],[2.0,5.0]] #inches width x height for both rectangles
+targetLow['Rects'] 			= [[2.0,5.0],[2.0,5.0]] #inches width by height for both rectangles
 targetLow['RectSep'] 		= [8.25,0.0]	#inches X, Y separation between rectangle centers
 targetLow['RectAngleTol']	= 20
 
@@ -300,6 +302,8 @@ def highTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
+	offAngle = 1.e6		# nonsense until set
+
 	timeStamp = time.time()
 	ret, frame = camera.read()
 	if(args.ofile and (not args.ifile)): outFileHigh.write(frame)
@@ -490,6 +494,7 @@ def lowTargetProcess():
 	slantRange = -1.0	# negative means not set
 	bearing = 1.e6		# nonsense until set
 	elevation = 1.6		# nonsense until set
+	offAngle = 1.e6		# nonsense until set
 	x = 0				# temp variable would like to pass back
 	y = 0				# temp variable would like to pass back
 
@@ -648,12 +653,19 @@ def lowTargetProcess():
 										[minX,maxY]]	
 							
 							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0
+
 							targetAngle = ((maxY-minY)/ySize) * fovY
+							
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
 							
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+
+							targetTotalWidth = (target1Width/2 + target2Width/2 + targetSepX) / 12.0
+							targetTotalWidthAngle = 2.0 * math.atan((targetTotalWidth/2) / slantRange)
+							targetTotalWidthPixels = targetTotalWidthAngle / resX
+							offAngle = math.degrees(math.acos(max(min((maxX-minX)/targetTotalWidthPixels,1.0),0.0)))
 							
 							x,y,bearing,slantRange=remap(bearing,slantRange)
 
@@ -737,13 +749,21 @@ def lowTargetProcess():
 										[maxX,maxY],
 										[minX,maxY]]	
 							
-							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0
-							targetAngle = ((maxY-minY)/ySize) * fovY
+							targetTotalHeight = ((target1Height + target2Height)/2) / 12.0  # target height in inches
+
+							targetAngle = ((maxY-minY)/ySize) * fovY		# % of vertical FOV filled by target
+							
 							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
 							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+
 							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
 							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
 							
+							targetTotalWidth = (target1Width/2 + target2Width/2 + targetSepX) / 12.0
+							targetTotalWidthAngle = 2.0 * math.atan((targetTotalWidth/2) / slantRange)
+							targetTotalWidthPixels = targetTotalWidthAngle / resX
+							offAngle = math.degrees(math.acos(max(min((maxX-minX)/targetTotalWidthPixels,1.0),0.0)))
+
 							x,y,bearing,slantRange=remap(bearing,slantRange)
 
 							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
@@ -761,18 +781,20 @@ def lowTargetProcess():
 								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 
-	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y)
 
 
 def processFrame():			# This function does all of the image processing on a single frame
 	x=0
 	y=0
+	offAngle = 1.e6			# nonsense
+
 	if(targetSought==0):
 		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation = highTargetProcess()
 	else:
-		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y= lowTargetProcess()
+		ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y= lowTargetProcess()
 
-	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, x, y)
+	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y)
 
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
@@ -785,7 +807,7 @@ while(camera.isOpened()):								# Main Processing Loop
 	elif data=='1':
 		resX, resY, xSize, ySize, camera, target = selectTarget(1)
 
-	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation,x,y= processFrame()
+	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y= processFrame()
 	if ret:	
 		runtime=time.time()-start_time
 #		udpSend(str(runtime)+',12,34,Last',sock)
@@ -817,9 +839,12 @@ while(camera.isOpened()):								# Main Processing Loop
 				bearingStr = 'Bearing (deg): '+"%0.2f" % (bearing)
 				cv2.putText(show,bearingStr,(10,170),font,0.5,(255,255,255),1)				
 				elevationStr = 'Elevation (deg): '+"%0.2f" % (elevation)
+				cv2.putText(show,bearingStr,(10,170),font,0.5,(255,255,255),1)				
+				offAngleStr = 'offAngle (deg): '+"%0.2f" % (offAngle)
 				cv2.putText(show,elevationStr,(10,190),font,0.5,(255,255,255),1)
-				cv2.putText(show,'x: '+str(x),(10,210),font,0.5,(255,255,255),1)
-				cv2.putText(show,'y: '+str(y),(10,230),font,0.5,(255,255,255),1)						
+				cv2.putText(show,offAngleStr,(10,210),font,0.5,(255,255,255),1)
+				cv2.putText(show,'x: '+str(x),(10,230),font,0.5,(255,255,255),1)
+				cv2.putText(show,'y: '+str(y),(10,250),font,0.5,(255,255,255),1)						
 
 			if(args.debug): cv2.imshow('Result',show)
 			if((id == 0) and (outResultsFileHigh != 0)): outResultsFileHigh.write(show)
