@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--ifile', type=str, action='store', default=0, help='Video Filename to use instead of camera')
 parser.add_argument('--ofile', type=str, action='store', default=0, help='Video Filename (without extension) to write results')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
-parser.add_argument('--id', default=1, action='store', help='0=High Targ, 1=Low Targ')
+parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
@@ -129,9 +129,8 @@ def initCamera(id = 0):
 		outputFileName = args.ofile
 		outputResultsFileName = args.ofile + 'Results'
 		fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-		outFile = cv2.VideoWriter(outputFileName+'.avi',fourcc, 20.0, (xSize, ySize))
-		outResultsFile = cv2.VideoWriter(outputResultsFileName+'.avi',fourcc, 20.0, (xSize, ySize))
-
+		outFile = cv2.VideoWriter(outputFileName+str(id)+'.avi',fourcc, 20.0, (xSize, ySize))
+		outResultsFile = cv2.VideoWriter(outputResultsFileName+str(id)+'.avi',fourcc, 20.0, (xSize, ySize))
 
 	return (resX,resY,camera,outFile,outResultsFile)
 
@@ -850,7 +849,7 @@ while(camera.isOpened()):								# Main Processing Loop
 			if((id == 0) and (outResultsFileHigh != 0)): outResultsFileHigh.write(show)
 			if((id == 1) and (outResultsFileLow != 0)): outResultsFileLow.write(show)
 
-		if (cv2.waitKey(1) & 0xFF == ord('q')):
+		if ((cv2.waitKey(1) & 0xFF == ord('q')) or (cv2.getWindowProperty('Result',0) == -1)):
 			break
 	else: break
 		
