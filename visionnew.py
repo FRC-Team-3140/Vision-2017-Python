@@ -25,15 +25,13 @@ from pdb import set_trace as br
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
 parser.add_argument('--ifile', type=str, action='store', default=0, help='Video Filename to use instead of camera')
-parser.add_argument('--ofile', type=str, action='store', default=0, help='Video Filename (without extension) to write results')
+parser.add_argument('--ofile', nargs='?', type=str, const=strftime("%a-%d-%b-%Y-%H:%M:%S-", gmtime(time.time())), help='Video Filename (without extension) to write results')
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
 parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
 args=parser.parse_args()
 
-
 # Define an error printing function for error reporting to terminal STD error IO stream
-
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
@@ -84,12 +82,13 @@ def udpRecieve(sock):
 	try:
 		data, addr=sock.recvfrom(1024) #buffer size
 	except socket.error:
-		eprint('	Nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
+		if args.debug:
+			eprint('	Nothing to get from socket: '+UDP_IP+', port:'+str(UDP_PORT))
 		return '',''
-	print(data)
+	if args.debug:
+		print(data)
 	return data, addr
 		
-
 def initCamera(id = 0):
 	camera = cv2.VideoCapture(id)
 	
@@ -126,6 +125,9 @@ def initCamera(id = 0):
 	outFile = 0				# initialize to 0 in case we aren't writing files
 	outResultsFile = 0		# initialize to 0 in case we aren't writing files
 	if args.ofile:
+		br()
+		if args.ofile==None:
+			outputFileName=sys.time()
 		outputFileName = args.ofile
 		outputResultsFileName = args.ofile + 'Results'
 		fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
@@ -849,9 +851,10 @@ while(camera.isOpened()):								# Main Processing Loop
 			if((id == 0) and (outResultsFileHigh != 0)): outResultsFileHigh.write(show)
 			if((id == 1) and (outResultsFileLow != 0)): outResultsFileLow.write(show)
 
-		if ((cv2.waitKey(1) & 0xFF == ord('q')) or (cv2.getWindowProperty('Result',0) == -1)):
+		if ((cv2.waitKey(1) & 0xFF == ord('q')) or (args.debug and (cv2.getWindowProperty('Result',0) == -1))):
 			break
-	else: break
+	else: 
+		break
 		
 
 
