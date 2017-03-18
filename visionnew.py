@@ -138,11 +138,11 @@ visionVersion = 0.13	# change version number at significant improvement levels
 						# version 	change
 						#	0.13	off-normal low peg target estimation
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = .5		# tolerance on the degree of fit in width/height aspects to expected
-areaRatio = 1.6 		# tolerance for how close the contour matches a best fit rectanglar box
-minBoxArea = 50 		# minimum box size to consider	if ret==True:
+aspectRatioTol = 0.55	# 0.5 # tolerance on the degree of fit in width/height aspects to expected
+areaRatio = 1.7 		# tolerance for how close the contour matches a best fit rectanglar box; 1.6 (2.0)
+minBoxArea = 200 		# minimum box size to consider	if ret==True: ; 50
 targetSought = 0 		# High target camera = 0, Low target camera = 1 
-sepPixelTol = 25 		# pixel error tolerance on expected separations of targets in the frame
+sepPixelTol = 25 		# pixel error tolerance on expected separations of targets in the frame; 25
 start_time=time.time() 	#for diagnostics
 runtime = start_time
 fpsMin = 10000000
@@ -197,7 +197,7 @@ sock=udpInit('10.4.13.42',5803)		# initializes UDP socket to send to RobioRio st
 
 targetHigh = {
 	'NumRects' : 2,
-	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles
+	'Rects' : [[14.0,4.0],[14.0,2.0]], #inches width x height for both rectangles 14,2; 16;2
 	'RectSep' : [0.0,7.0], #inches X, Y separation between rectangle centers
 	'RectIntensity' : [True,True], #each rectangle should be brighter than surrounding
 	'RectSepTol' : 0.25, #inches tolernce between true and found differences
@@ -354,6 +354,11 @@ def highTargetProcess():
 
 			rect = ((centerX,centerY),(width,height), 0.)
 			box = np.int0(box)
+
+			if (args.debug or args.ofile):
+				cv2.drawContours(frame,[box], 0, (0,128,0), 2)
+
+
 			# is it a big enough box?
 
 			if cv2.contourArea(box) >= minBoxArea:
@@ -402,71 +407,73 @@ def highTargetProcess():
 				heightRatio = height1 / height2
 				heightErrorAspect = (heightRatio - targetHeightRatio) / targetHeightRatio
 
-				if (abs(heightErrorAspect) <= aspectRatioTol):
-					widthRatio = width1 / width2
-					widthErrorAspect = (widthRatio - targetWidthRatio) / targetWidthRatio
+				if (not found):
 
-					if (abs(widthErrorAspect) <= aspectRatioTol):
-						# each segment appears the right size relative to each other, how about the expected 
-						# separation relative to each other?  Does that match as well on the segments?
+					if (abs(heightErrorAspect) <= aspectRatioTol):
+						widthRatio = width1 / width2
+						widthErrorAspect = (widthRatio - targetWidthRatio) / targetWidthRatio
 
-						targetSepX, targetSepY = target['RectSep']
-						resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
-						resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
-						targetSepXPixels = targetSepX / resApparentX
-						targetSepYPixels = targetSepY / resApparentY
-						center1X, center1Y = rect1[0]
-						center2X, center2Y = rect2[0]
-						segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
-						segmentSepY = center2Y - center1Y
-						sepXError = (segmentSepX - targetSepXPixels)
-						sepYError = (segmentSepY - targetSepYPixels)
+						if (abs(widthErrorAspect) <= aspectRatioTol):
+							# each segment appears the right size relative to each other, how about the expected 
+							# separation relative to each other?  Does that match as well on the segments?
 
-						if ((abs(sepXError) <= sepPixelTol) and (abs(sepYError) <= sepPixelTol)):
-							found = True
-							minX = 1.e6
-							minY = 1.e6
-							maxX = -1
-							maxY = -1
+							targetSepX, targetSepY = target['RectSep']
+							resApparentX = target1Width / width1			# if top segment is true, this estimates inches/pixel
+							resApparentY = target1Height / height1			# if top segment is true, this estimates inches/pixel
+							targetSepXPixels = targetSepX / resApparentX
+							targetSepYPixels = targetSepY / resApparentY
+							center1X, center1Y = rect1[0]
+							center2X, center2Y = rect2[0]
+							segmentSepX = center2X - center1X				# row, col coordinate system with top left the origin
+							segmentSepY = center2Y - center1Y
+							sepXError = (segmentSepX - targetSepXPixels)
+							sepYError = (segmentSepY - targetSepYPixels)
 
-							box = cv2.boxPoints(rect1)
-							for i in range(0,4):
-								if (box[i][0] < minX): minX = box[i][0]
-								if (box[i][0] > maxX): maxX = box[i][0]
-								if (box[i][1] < minY): minY = box[i][1]
-								if (box[i][1] > maxY): maxY = box[i][1]
+							if ((abs(sepXError) <= sepPixelTol) and (abs(sepYError) <= sepPixelTol)):
+								found = True
+								minX = 1.e6
+								minY = 1.e6
+								maxX = -1
+								maxY = -1
 
-							box = cv2.boxPoints(rect2)
-							for i in range(0,4):
-								if (box[i][0] < minX): minX = box[i][0]
-								if (box[i][0] > maxX): maxX = box[i][0]
-								if (box[i][1] < minY): minY = box[i][1]
-								if (box[i][1] > maxY): maxY = box[i][1]
+								box = cv2.boxPoints(rect1)
+								for i in range(0,4):
+									if (box[i][0] < minX): minX = box[i][0]
+									if (box[i][0] > maxX): maxX = box[i][0]
+									if (box[i][1] < minY): minY = box[i][1]
+									if (box[i][1] > maxY): maxY = box[i][1]
 
-							foundBox = [[minX,minY],
-										[maxX,minY],
-										[maxX,maxY],
-										[minX,maxY]]	
-							
-							targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
-							targetAngle = ((maxY-minY)/ySize) * fovY
-							slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
-							slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
-							aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
-							bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
-							elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
-							foundBox = np.array(foundBox, dtype=np.int32)
+								box = cv2.boxPoints(rect2)
+								for i in range(0,4):
+									if (box[i][0] < minX): minX = box[i][0]
+									if (box[i][0] > maxX): maxX = box[i][0]
+									if (box[i][1] < minY): minY = box[i][1]
+									if (box[i][1] > maxY): maxY = box[i][1]
 
-							if (args.debug or args.ofile):
-								cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
-								apX = np.int0(aimPoint[0])	
-								apY = np.int0(aimPoint[1])
-								aimLineStart = (apX-10,apY)
-								aimLineStop  = (apX+10,apY)
-								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
-								aimLineStart = (apX,apY-10)
-								aimLineStop  = (apX,apY+10)							
-								cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
+								foundBox = [[minX,minY],
+											[maxX,minY],
+											[maxX,maxY],
+											[minX,maxY]]	
+								
+								targetTotalHeight = (target1Height + target2Height + targetSepY ) / 12.0
+								targetAngle = ((maxY-minY)/ySize) * fovY
+								slantRange = (targetTotalHeight/2.0) / math.tan(targetAngle/2.0)
+								slantRange = slantRange*rangeCalibrationScaleFactor + rangeCalibrationBias
+								aimPoint = [minX + (maxX-minX)/2.0, minY + (maxY-minY)/2.0]
+								bearing = (aimPoint[0] - xSize/2.0) * math.degrees(resX)
+								elevation = (ySize/2.0 - aimPoint[1]) * math.degrees(resY)
+								foundBox = np.array(foundBox, dtype=np.int32)
+
+								if (args.debug or args.ofile):
+									cv2.drawContours(frame,[foundBox], 0, (255,255,0), 2)
+									apX = np.int0(aimPoint[0])	
+									apY = np.int0(aimPoint[1])
+									aimLineStart = (apX-10,apY)
+									aimLineStop  = (apX+10,apY)
+									cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
+									aimLineStart = (apX,apY-10)
+									aimLineStop  = (apX,apY+10)							
+									cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
 def remap(bearing,slantRange):
