@@ -134,12 +134,13 @@ def initCamera(id = 0):
 	return (resX,resY,camera,outFile,outResultsFile)
 
 ############## Parameter Initialization #########################################################
-visionVersion = 0.13	# change version number at significant improvement levels
+visionVersion = 0.14	# change version number at significant improvement levels
 						# version 	change
 						#	0.13	off-normal low peg target estimation
+						#	0.14	code runs; need to adjust targeting routine for perspective changes
 font = cv2.FONT_HERSHEY_SIMPLEX
-aspectRatioTol = 0.55	# 0.5 # tolerance on the degree of fit in width/height aspects to expected
-areaRatio = 1.7 		# tolerance for how close the contour matches a best fit rectanglar box; 1.6 (2.0)
+aspectRatioTol = 0.5	# 0.5 # tolerance on the degree of fit in width/height aspects to expected
+areaRatio = 1.6 		# tolerance for how close the contour matches a best fit rectanglar box; 1.6 (2.0)
 minBoxArea = 200 		# minimum box size to consider	if ret==True: ; 50
 targetSought = 0 		# High target camera = 0, Low target camera = 1 
 sepPixelTol = 25 		# pixel error tolerance on expected separations of targets in the frame; 25
@@ -311,9 +312,9 @@ def highTargetProcess():
 		img2 = frame[:,:,1] # green band used only as we are using green LED illuminators
 
 		ret,thresh = cv2.threshold(img2,imageBinaryThresh,255,cv2.THRESH_BINARY)	# get a binary image of only the brightest areas
-		img2 = thresh.copy()
-		im2, contours, hierarchy = cv2.findContours(img2,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-
+		im2, contours, hierarchy = cv2.findContours(thresh.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		contours = sorted(contours, key = cv2.contourArea, reverse = True)[:25]
+		
 		if args.debug==True: # draw cross-hairs on image defining camera center
 			lineStart = (0,np.int0(ySize/2))
 			lineStop  = (np.int0(xSize-1),np.int0(ySize/2))
@@ -338,25 +339,76 @@ def highTargetProcess():
 			topRight = box[0]
 			botLeft = box[0]
 			botRight = box[0]
+
+			# find the top-left, bottom-left, top-right, top-bottom corners of the box
 			for i in range(1,4):
 				if (box[i][0] < centerX) and (box[i][1] < centerY): topLeft = box[i]
 				if (box[i][0] < centerX) and (box[i][1] > centerY): botLeft = box[i]
 				if (box[i][0] > centerX) and (box[i][1] < centerY): topRight = box[i]
 				if (box[i][0] > centerX) and (box[i][1] > centerY): botRight = box[i]
 
+			# calculate the midpoints of the bounding box
+
 			edgeTop = [(topLeft[0]+topRight[0])/2, (topLeft[1]+topRight[1])/2]
 			edgeBot = [(botLeft[0]+botRight[0])/2, (botLeft[1]+botRight[1])/2]
 			edgeLeft = [(topLeft[0]+botLeft[0])/2, (topLeft[1]+botLeft[1])/2]
 			edgeRight = [(topRight[0]+botRight[0])/2, (topRight[1]+botRight[1])/2]
 
-			width = edgeRight[0] - edgeLeft[0]
-			height = edgeBot[1] - edgeTop[1]
+			# For short ranges, the curvature of the funnel distorts the tape from the rectangular
+			# model we have.  Therefore lets estimate the tape height and adjust the center estimate not 
+			# by the bounding box but from a line "transect" from the top edge of the bounding box down
+			# to the bottom edge. 
 
+			# extract a line from the edgeTop to the edgeBot to measure the height of the reflective tape
+			length = int(np.hypot(edgeTop[0]-edgeBot[0], edgeTop[1]-edgeBot[1]))
+			length = math.sqrt((topLeft[0]-botLeft[0])*(topLeft[0]-botLeft[0])+(topLeft[1]-botLeft[1])*(topLeft[1]-botLeft[1]))
+			x, y = np.linspace(edgeTop[0], edgeBot[0], length), np.linspace(edgeTop[1], edgeBot[1], length)
+			x = np.clip(x,0,np.size(thresh,1)-1)
+			y = np.clip(y,0,np.size(thresh,0)-1)
+
+			# Extract the values along the line and see how many pixels are lit along the transect
+			zi = thresh[y.astype(np.int), x.astype(np.int)]
+			height = np.sum(zi != 0)
+			centerY = centerY - (np.size(zi)-height)/2  # adjust center by transect differenc
+			
+			#br()
+			# find the width and height of the bounding box
+
+			#width = edgeRight[0] - edgeLeft[0]
+			#height = edgeBot[1] - edgeTop[1]
+
+			# rotated boxes accounted for with this calculation
+
+			width = math.sqrt((topRight[0]-topLeft[0])*(topRight[0]-topLeft[0])+(topRight[1]-topLeft[1])*(topRight[1]-topLeft[1]))
+			#height = math.sqrt((topLeft[0]-botLeft[0])*(topLeft[0]-botLeft[0])+(topLeft[1]-botLeft[1])*(topLeft[1]-botLeft[1]))
+
+
+			# this becomes a candidate rectangle
 			rect = ((centerX,centerY),(width,height), 0.)
+			box = cv2.boxPoints(rect)
 			box = np.int0(box)
 
-			if (args.debug or args.ofile):
-				cv2.drawContours(frame,[box], 0, (0,128,0), 2)
+			#if (args.debug or args.ofile):
+
+				#h = cv2.convexHull(cnt)
+				#cv2.drawContours(frame, [h], 0, (0,128,255), 2)
+
+				# determine the most extreme points along the contour
+				#extLeft = tuple(h[h[:, :, 0].argmin()][0])
+				#extRight = tuple(h[h[:, :, 0].argmax()][0])
+				#extTop = tuple(h[h[:, :, 1].argmin()][0])
+				#extBot = tuple(h[h[:, :, 1].argmax()][0])
+
+				# draw the outline of the object, then draw each of the
+				# extreme points, where the left-most is red, right-most
+				# is green, top-most is blue, and bottom-most is teal
+
+				#cv2.circle(frame, extLeft, 3, (0, 0, 255), -1)
+				#cv2.circle(frame, extRight, 3, (0, 255, 0), -1)
+				#cv2.circle(frame, extTop, 3, (255, 0, 0), -1)
+				#cv2.circle(frame, extBot, 3, (255, 255, 0), -1)
+
+				#cv2.drawContours(frame,[box], 0, (0,128,0), 2)
 
 
 			# is it a big enough box?
@@ -376,17 +428,18 @@ def highTargetProcess():
 							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
 							if (abs(errorAspect) <= aspectRatioTol):
 								segments1.append(rect) #collect the boxes for later processing
-								if args.debug==True: 
-									cv2.drawContours(frame,[box], 0, 255, 2)
+								#if args.debug==True: 
+								#	cv2.drawContours(frame,[box], 0, 255, 2)
+							else:
 							# Second box								
-							targetWidth, targetHeight = target['Rects'][1]
-							targetAspectRatio = targetWidth/targetHeight
-							rectAspectRatio = width/height
-							errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
-							if (abs(errorAspect) <= aspectRatioTol):
-								segments2.append(rect) #collect the boxes for later processing
-								if args.debug==True: 
-									cv2.drawContours(frame,[box], 0, (0,0,255), 2)
+								targetWidth, targetHeight = target['Rects'][1]
+								targetAspectRatio = targetWidth/targetHeight
+								rectAspectRatio = width/height
+								errorAspect = (rectAspectRatio-targetAspectRatio)/targetAspectRatio
+								if (abs(errorAspect) <= aspectRatioTol):
+									segments2.append(rect) #collect the boxes for later processing
+									#if args.debug==True: 
+									#	cv2.drawContours(frame,[box], 0, (0,0,255), 2)
 
 
 	if (len(segments1) > 0) and (len(segments2) > 0):			# any candidate pairs?
@@ -476,6 +529,7 @@ def highTargetProcess():
 									cv2.line(frame,aimLineStart,aimLineStop,(0,255,255),3)
 
 	return (ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation)
+
 def remap(bearing,slantRange):
 		x=slantRange*math.cos(math.pi/2-math.radians(bearing))
 		xPrime=x-deltaX
