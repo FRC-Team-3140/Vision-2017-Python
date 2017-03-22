@@ -300,7 +300,7 @@ def highTargetProcess():
 	segments2 = []		# found segment array for rectangle 2
 	aimPoint = []		# empty until found
 	slantRange = -1.0	# negative means not set
-	bearing = 1.e6		# nonsense until set
+	bearing = 0.0		# nonsense until set
 	elevation = 1.6		# nonsense until set
 	offAngle = 1.e6		# nonsense until set
 
@@ -552,7 +552,7 @@ def lowTargetProcess():
 	segments2 = []		# found segment array for rectangle 2
 	aimPoint = []		# empty until found
 	slantRange = -1.0	# negative means not set
-	bearing = 1.e6		# nonsense until set
+	bearing = 0.0		# nonsense until set
 	elevation = 1.6		# nonsense until set
 	offAngle = 1.e6		# nonsense until set
 	x = 0				# temp variable would like to pass back
