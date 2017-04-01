@@ -42,7 +42,7 @@ def eprint(*args, **kwargs):
 #						-- Initialized a udp sockect at the port and ip specified
 #			updSend( message , sock ):
 # 						-- Send a message (string) to the specified socket and provide debug print back
-#			udpRecieve( sock ):
+#			udpReceive( sock ):
 #						--- Return a string found at the specified socket
 def udpInit(udp_ip,udp_port):
 	global UDP_IP
@@ -78,7 +78,7 @@ def udpSend(message,sock):
 	if args.debug:
 		print('Sent:'+message)
 
-def udpRecieve(sock):
+def udpReceive(sock):
 	try:
 		data, addr=sock.recvfrom(1024) #buffer size
 	except socket.error:
@@ -861,7 +861,7 @@ while(camera.isOpened()):								# Main Processing Loop
 
 	# accept camera changes
 
-	data, addr=udpRecieve(sock) # get data for camera selection
+	data, addr=udpReceive(sock) # get data for camera selection
 	if data=='0':
 		resX, resY, xSize, ySize, camera, target = selectTarget(0)
 	elif data=='1':
