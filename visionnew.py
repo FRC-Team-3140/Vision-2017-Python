@@ -66,6 +66,7 @@ def udpInit(udp_ip,udp_port):
 	#define socket
 	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
 							 socket.SOCK_DGRAM) # UDP
+	UDP_SOCK.connect((UDP_IP,UDP_PORT))
 	UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
 	udpSend(str('0'),UDP_SOCK) # send simple packet so roboRIO gets the ip address to send to
 	return UDP_SOCK
@@ -182,7 +183,8 @@ outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
 # sock=udpInit('10.31.40.42',5803)
-sock=udpInit('10.4.13.42',5803)		# initializes UDP socket to send to RobioRio static IP
+# sock=udpInit('10.4.13.42',5803)		# initializes UDP socket to send to RobioRio static IP
+sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
