@@ -50,8 +50,6 @@ def udpInit(udp_ip,udp_port):
 	#set ip address
 	try:
 		assert type(udp_ip)==str
-		if not re.match('\\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\\b',udp_ip):
-			raise 'n cookie'
 		UDP_IP = udp_ip
 	except:
 		eprint('Error: Provided udp_ip is not a valid ip')
@@ -183,7 +181,7 @@ outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
 # sock=udpInit('10.31.40.42',5803)
-# sock=udpInit('10.4.13.42',5803)		# initializes UDP socket to send to RobioRio static IP
+#sock=udpInit('10.31.40.53',5803)		# initializes UDP socket to send to RobioRio static IP
 sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 ##############################################################################################
 #
