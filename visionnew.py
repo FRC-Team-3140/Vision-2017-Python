@@ -29,6 +29,7 @@ parser.add_argument('--ofile', nargs='?', type=str, const=strftime("%a_%d_%b_%Y_
 parser.add_argument('--thresh', default=False, action='store_const', const=True, help='Display Threshimg')
 parser.add_argument('--id', default=0, action='store', help='0=High Targ, 1=Low Targ')
 parser.add_argument('--debug', default=False, action='store_const', const=True, help='Debug Mode')
+parser.add_argument('--noudp', default=False, action='store_const', const=True, help='Use if not on the robot network')
 args=parser.parse_args()
 
 # Define an error printing function for error reporting to terminal STD error IO stream
@@ -62,10 +63,15 @@ def udpInit(udp_ip,udp_port):
 		eprint('Error: Provided port is invalid')
 		sys.exit()
 	#define socket
-	UDP_SOCK = socket.socket(socket.AF_INET, # Internet
-							 socket.SOCK_DGRAM) # UDP
-	UDP_SOCK.connect((UDP_IP,UDP_PORT))
-	UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
+	try:
+		UDP_SOCK = socket.socket(socket.AF_INET, # Internet
+									 socket.SOCK_DGRAM) # UDP
+		UDP_SOCK.connect((UDP_IP,UDP_PORT))
+		UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
+	except:
+		eprint('Error: Cannot find RoboRio')
+		sys.exit()
+
 	udpSend(str('0'),UDP_SOCK) # send simple packet so roboRIO gets the ip address to send to
 	return UDP_SOCK
 
@@ -180,9 +186,11 @@ outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-# sock=udpInit('10.31.40.42',5803)
-#sock=udpInit('10.31.40.53',5803)		# initializes UDP socket to send to RobioRio static IP
-sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
+if not args.noudp :
+	sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
+	#sock=udpInit('10.31.40.42',5803)
+	#sock=udpInit('10.31.40.53',5803)		# initializes UDP socket to send to RobioRio static IP
+
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
@@ -859,19 +867,22 @@ def processFrame():			# This function does all of the image processing on a sing
 while(camera.isOpened()):								# Main Processing Loop
 	runtimeLast = runtime
 
-	# accept camera changes
-
-	data, addr=udpReceive(sock) # get data for camera selection
-	if data=='0':
-		resX, resY, xSize, ySize, camera, target = selectTarget(0)
-	elif data=='1':
-		resX, resY, xSize, ySize, camera, target = selectTarget(1)
+	if not args.noudp:
+		# accept camera changes
+		data, addr=udpReceive(sock) # get data for camera selection
+		if data=='0':
+			resX, resY, xSize, ySize, camera, target = selectTarget(0)
+		elif data=='1':
+			resX, resY, xSize, ySize, camera, target = selectTarget(1)
 
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y= processFrame()
 	if ret:	
 		runtime=time.time()-start_time
-#		udpSend(str(runtime)+',12,34,Last',sock)
-		udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
+
+		if not args.noudp:
+	#		udpSend(str(runtime)+',12,34,Last',sock)
+			udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
+
 		if (args.debug):
 			runtime=time.time()-start_time
 			fps = 1.0/(runtime - runtimeLast)
