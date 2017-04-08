@@ -180,9 +180,9 @@ outFileHigh = 0							# definte global variables
 outFileLow = 0
 outResultsFileHigh = 0
 outResultsFileLow = 0
-# sock=udpInit('10.31.40.42',5803)
+sock=udpInit('10.4.13.53',5803)		# initializes UDP socket to send to RobioRio static IP
 #sock=udpInit('10.31.40.53',5803)		# initializes UDP socket to send to RobioRio static IP
-sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
+#sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 ##############################################################################################
 #
 # Target Definitions - for a High vision target (boiler) and Low target (Gear placement)
