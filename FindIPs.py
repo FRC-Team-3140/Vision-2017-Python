@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 #######
 ####### This code is to run automatically when the Pi is turned on, and will find the IP the rio is on and put it in a text document to be read by the main vision file
 #######
