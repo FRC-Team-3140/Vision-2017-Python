@@ -116,13 +116,13 @@ def initCamera(id = 0):
 											
 	camera.set(cv2.CAP_PROP_FRAME_WIDTH, xSize)
 	camera.set(cv2.CAP_PROP_FRAME_HEIGHT, ySize)
-	camera.set(cv2.CAP_PROP_BRIGHTNESS, 50) # workaround for broken Brightness setting
+	#camera.set(cv2.CAP_PROP_BRIGHTNESS, 50) # workaround for broken Brightness setting
 	ret, frame = camera.read()	
 
-	camera.set(cv2.CAP_PROP_CONTRAST, 10) 
-	camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, -1)
-	camera.set(cv2.CAP_PROP_EXPOSURE,-100) 
-	camera.set(cv2.CAP_PROP_BRIGHTNESS, 30) 
+	#camera.set(cv2.CAP_PROP_CONTRAST, 10) 
+	#camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, -1)
+	#camera.set(cv2.CAP_PROP_EXPOSURE,-100) 
+	#camera.set(cv2.CAP_PROP_BRIGHTNESS, 30) 
 
 	resX = fovX / xSize		# radians/pixel
 	resY = fovY / ySize		# radians/pixel
@@ -189,7 +189,7 @@ outResultsFileLow = 0
 if not args.noudp :
 	#sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 	#sock=udpInit('10.31.40.42',5803)
-	sock=udpInit('10.31.40.53',5802)		# initializes UDP socket to send to RobioRio static IP
+	sock=udpInit('192.168.0.20',31400)		# initializes UDP socket to send to RobioRio static IP
 
 ##############################################################################################
 #
@@ -250,7 +250,7 @@ if args.ifile:
 		outResultsFileLow = cv2.VideoWriter(outputResultsFileName+'1'+'.avi',fourcc, 20.0, (np.int0(xSize), np.int0(ySize)))
 
 else:
-	resXHigh, resYHigh, cameraHigh, outFileHigh, outResultsFileHigh = initCamera(0)
+	resXHigh, resYHigh, cameraHigh, outFileHigh, outResultsFileHigh = initCamera(0) #What's being returned
 	resXLow, resYLow, cameraLow, outFileLow, outResultsFileLow = initCamera(1)
 
 
@@ -871,8 +871,10 @@ while(camera.isOpened()):								# Main Processing Loop
 		# accept camera changes
 		data, addr=udpReceive(sock) # get data for camera selection
 		if data=='0':
+                        print("Set to 0")
 			resX, resY, xSize, ySize, camera, target = selectTarget(0)
 		elif data=='1':
+                        print("Set to 1")
 			resX, resY, xSize, ySize, camera, target = selectTarget(1)
 
 	ret, timeStamp, thresh, frame, found, aimPoint, slantRange, bearing, elevation, offAngle, x, y= processFrame()
@@ -881,7 +883,7 @@ while(camera.isOpened()):								# Main Processing Loop
 
 		if not args.noudp:
 	#		udpSend(str(runtime)+',12,34,Last',sock)
-			udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock)
+			udpSend(str(timeStamp)+','+str(id)+','+str(found)+','+str(slantRange)+','+str(bearing)+','+str(elevation),sock) #What's being sent through UDP
 
 		if (args.debug):
 			runtime=time.time()-start_time
