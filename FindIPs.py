@@ -4,15 +4,28 @@
 ####### This code is to run automatically when the Pi is turned on, and will find the IP the rio is on and put it in a text document to be read by the main vision file
 #######
 
+import time
+import os
 import subprocess as sp
 import re
 
-RioMacAddress = '6C:40:08:2C:93:8A' #Put the Rio's MAC Address here
+RioMacAddress = ['6C:40:08:2C:93:8A', '00:80:2F:25:B2:2F'] #Put the Rio's MAC Address here
 
 regex = ur"(\d+[.]\d+[.]\d+[.]\d+).*?(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)" #Used to pull the IPs and MAC Addresses from the console
 netMask = ur"[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.]" #Used to find the subnet mask
 
-myIP = sp.check_output("hostname -I", shell=True) #Gets my IP
+while True:
+	try:
+		myIP = sp.check_output("hostname -I", shell=True) #Gets my IP
+		if not (myIP and not myIP.strip()):
+			break
+		print("Retrying IP")
+		time.sleep(1)
+	except:
+		print("Retrying IP")
+		time.sleep(1)
+
+print(myIP)
 netMaskIP = re.findall(netMask, myIP) #Finds the subnet Mask
 print("Finding devices on subnet mask {ip}".format(ip=netMaskIP[0]))
 
@@ -26,7 +39,7 @@ def Connect():
     print("{pIP} Mac Addresses have been found".format(pIP=len(parsedMacAddress)))
 
     for thisMac in parsedMacAddress:
-        if thisMac[1] == RioMacAddress:
+        if thisMac[1] in RioMacAddress:
             rioIP = thisMac[0]
             print("Rio Connected, Local IP is {ip}".format(ip=rioIP))
             macAddressCorrect = True
@@ -36,8 +49,9 @@ while macAddressCorrect == False:
     Connect()
     if (macAddressCorrect == False): #This is hear just to keep this message from displaying the first time the code is run
         print("Failed MAC Address Validation, trying again")
+	print(os.getpid())
 
-IPFile = open("ipdoc.txt", "w") #Opens the text document that the vision code will read for the IP
+IPFile = open("/home/pi/git/Vision/Vision-2017-Python/ipdoc.txt", "w") #Opens the text document that the vision code will read for the IP
 IPFile.write(rioIP) #Writes the IP into the document
 IPFile.close()
 print("Done Connecting")

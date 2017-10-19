@@ -21,6 +21,9 @@ import sys #
 from time import gmtime, strftime
 from pdb import set_trace as br
 
+ipFile = open("ipdoc.txt", "r") #Opens the file that stores the Rio IP
+rioIP = ipFile.read()
+
 # Routines to parse command line arguments
 
 parser = argparse.ArgumentParser(description="Finds 2017 Vision Targets")
@@ -54,6 +57,7 @@ def udpInit(udp_ip,udp_port):
 		UDP_IP = udp_ip
 	except:
 		eprint('Error: Provided udp_ip is not a valid ip')
+		ipFile.close()
 		sys.exit()
 	#set port
 	try:
@@ -61,6 +65,7 @@ def udpInit(udp_ip,udp_port):
 		UDP_PORT = udp_port
 	except:
 		eprint('Error: Provided port is invalid')
+                ipFile.close()
 		sys.exit()
 	#define socket
 	try:
@@ -70,6 +75,7 @@ def udpInit(udp_ip,udp_port):
 		UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
 	except:
 		eprint('Error: Cannot find RoboRio')
+		ipFile.close()
 		sys.exit()
 
 	udpSend(str('0'),UDP_SOCK) # send simple packet so roboRIO gets the ip address to send to
@@ -189,7 +195,8 @@ outResultsFileLow = 0
 if not args.noudp :
 	#sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 	#sock=udpInit('10.31.40.42',5803)
-	sock=udpInit('192.168.0.20',31400)		# initializes UDP socket to send to RobioRio static IP
+        rioIP = ipFile.read()
+	sock=udpInit(rioIP, 31400)		# initializes UDP socket to send to RobioRio static IP
 
 ##############################################################################################
 #
@@ -931,6 +938,7 @@ while(camera.isOpened()):								# Main Processing Loop
 
 
 # Release everything if job is finished
+ipFile.close()
 cameraHigh.release()
 cameraLow.release()
 if (outFileHigh != 0): outFileHigh.release()
