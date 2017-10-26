@@ -9,7 +9,7 @@ import os
 import subprocess as sp
 import re
 
-RioMacAddress = ['6C:40:08:2C:93:8A', '00:80:2F:25:B2:2F'] #Put the Rio's MAC Address here
+RioMacAddress = ['6C:40:08:2C:93:8A', '00:80:2F:25:B2:2F'] #Put the Rio's MAC Address here, the first MAC Address is my Iphone for testing, the second MAC Address is the Rio currently on the Kiwibot 
 
 regex = ur"(\d+[.]\d+[.]\d+[.]\d+).*?(\w\w:\w\w:\w\w:\w\w:\w\w:\w\w)" #Used to pull the IPs and MAC Addresses from the console
 netMask = ur"[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.]" #Used to find the subnet mask
@@ -19,10 +19,10 @@ while True:
 		myIP = sp.check_output("hostname -I", shell=True) #Gets my IP
 		if not (myIP and not myIP.strip()):
 			break
-		print("Retrying IP")
+		print("Retrying IP (Try)")
 		time.sleep(1)
 	except:
-		print("Retrying IP")
+		print("Retrying IP (Except)")
 		time.sleep(1)
 
 print(myIP)

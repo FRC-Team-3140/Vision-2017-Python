@@ -1,4 +1,4 @@
-#!C:\Program Files\Anaconda2\python.exe
+#!/usr/bin/python
 #
 # Vision Processing Code for 2017 FRC
 # FRC Team 3140 Farragut Flaship, Farragut High School, Knoxville Tennessee
@@ -18,13 +18,22 @@ import argparse
 import socket
 import re #used to check ip regex
 import sys #
+import os
 from time import gmtime, strftime
 from pdb import set_trace as br
 
-ipFile = open("/home/pi/git/Vision/Vision-2017-Python/ipdoc.txt", "r") #Opens the file that stores the Rio IP
-rioIP = ipFile.read()
+ipPath = "/home/pi/git/Vision/Vision-2017-Python/ipdoc.txt"
 rioPort = 31400
-print(rioIP)
+
+while True:
+    if (os.path.exists(ipPath)):
+        ipFile = open(ipPath, "r") #Opens the file that stores the Rio IP
+        rioIP = ipFile.read()
+        print(rioIP)
+        ipFile.close()
+        break
+    print("Reading Rio IP from file")
+    time.sleep(1)
 
 # Routines to parse command line arguments
 
@@ -37,6 +46,12 @@ parser.add_argument('--debug', default=False, action='store_const', const=True, 
 parser.add_argument('--noudp', default=False, action='store_const', const=True, help='Use if not on the robot network')
 args=parser.parse_args()
 
+def retryUDP():
+    global sock
+    time.sleep(1)
+    print("Retrying UDP Connection")
+    sock=udpInit(rioIP, rioPort)
+    
 # Define an error printing function for error reporting to terminal STD error IO stream
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -59,16 +74,19 @@ def udpInit(udp_ip,udp_port):
 		UDP_IP = udp_ip
 	except:
 		eprint('Error: Provided udp_ip is not a valid ip')
-		ipFile.close()
-		sys.exit()
+		#ipFile.close()
+		#sys.exit()
+                retryUDP()
+		
 	#set port
 	try:
 		assert type(udp_port)==int and udp_port in xrange(1,49151) #xrange is more memory efficient than range for large ranges
 		UDP_PORT = udp_port
 	except:
 		eprint('Error: Provided port is invalid')
-                ipFile.close()
-		sys.exit()
+                #ipFile.close()
+		#sys.exit()
+		retryUDP()
 	#define socket
 	try:
 		UDP_SOCK = socket.socket(socket.AF_INET, # Internet
@@ -77,8 +95,9 @@ def udpInit(udp_ip,udp_port):
 		UDP_SOCK.setblocking(0) # make the recieve not wait for the buffer to fill before continuing
 	except:
 		eprint('Error: Cannot find RoboRio')
-		ipFile.close()
-		sys.exit()
+		#ipFile.close()
+		#sys.exit()
+		retryUDP()
 
 	udpSend(str('0'),UDP_SOCK) # send simple packet so roboRIO gets the ip address to send to
 	return UDP_SOCK
@@ -197,7 +216,6 @@ outResultsFileLow = 0
 if not args.noudp :
 	#sock=udpInit('roboRIO-3140-FRC.frc-robot.local',5803)
 	#sock=udpInit('10.31.40.42',5803)
-        rioIP = ipFile.read()
 	sock=udpInit(rioIP, rioPort)		# initializes UDP socket to send to RobioRio static IP
 
 ##############################################################################################
@@ -940,7 +958,6 @@ while(camera.isOpened()):								# Main Processing Loop
 
 
 # Release everything if job is finished
-ipFile.close()
 cameraHigh.release()
 cameraLow.release()
 if (outFileHigh != 0): outFileHigh.release()
